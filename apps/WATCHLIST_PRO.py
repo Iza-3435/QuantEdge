@@ -43,11 +43,8 @@ DB_PATH = 'investment_platform.db'
 COLORS = {
     'up': 'green',
     'down': 'red',
-    'neutral': 'yellow',
-    'alert': 'red bold',
-    'warning': 'yellow bold',
-    'info': 'cyan',
-    'success': 'green bold'
+    'neutral': 'white',
+    'dim': 'bright_black'
 }
 
 

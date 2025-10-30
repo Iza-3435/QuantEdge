@@ -56,33 +56,31 @@ class Feature:
 FEATURES: List[Feature] = [
     Feature(1, 'Professional Research Terminal', 'apps/PROFESSIONAL_RESEARCH_TERMINAL.py',
             'Complete stock research & analysis', True),
-    Feature(2, 'AI Market Dashboard', 'scripts/advanced_dashboard.py',
-            'AI-powered market intelligence', True),
-    Feature(3, 'Market Overview', 'apps/MARKET_OVERVIEW.py',
+    Feature(2, 'Market Overview', 'apps/MARKET_OVERVIEW.py',
             'Major markets & news (clickable)', False),
-    Feature(4, 'Portfolio Manager Pro', 'apps/PORTFOLIO_PRO.py',
+    Feature(3, 'Portfolio Manager Pro', 'apps/PORTFOLIO_PRO.py',
             'Track & manage portfolio', False),
-    Feature(5, 'Watchlist Pro', 'apps/WATCHLIST_PRO.py',
+    Feature(4, 'Watchlist Pro', 'apps/WATCHLIST_PRO.py',
             'Monitor watchlist stocks', False),
-    Feature(6, 'Stock Screener', 'apps/STOCK_SCREENER.py',
+    Feature(5, 'Stock Screener', 'apps/STOCK_SCREENER.py',
             'Find stocks by criteria', False),
-    Feature(7, 'AI Stock Picker', 'apps/AI_STOCK_PICKER.py',
+    Feature(6, 'AI Stock Picker', 'apps/AI_STOCK_PICKER.py',
             'AI stock recommendations', False),
-    Feature(8, 'Historical Context', 'apps/HISTORICAL_CONTEXT.py',
+    Feature(7, 'Historical Context', 'apps/HISTORICAL_CONTEXT.py',
             'Historical patterns & trends', True),
-    Feature(9, 'Investment Projection', 'apps/INVESTMENT_PROJECTION.py',
+    Feature(8, 'Investment Projection', 'apps/INVESTMENT_PROJECTION.py',
             'Future price projections', True),
-    Feature(10, 'Comparison Matrix', 'apps/COMPARISON_MATRIX.py',
-            'Compare stocks (17 metrics)', True),
-    Feature(11, 'Earnings Calendar', 'apps/EARNINGS_CALENDAR.py',
+    Feature(9, 'Comparison Matrix', 'apps/COMPARISON_MATRIX.py',
+            'Compare stocks (25+ metrics)', True),
+    Feature(10, 'Earnings Calendar', 'apps/EARNINGS_CALENDAR.py',
             'Upcoming earnings & surprises', False),
-    Feature(12, 'Dividend Tracker', 'apps/DIVIDEND_TRACKER.py',
+    Feature(11, 'Dividend Tracker', 'apps/DIVIDEND_TRACKER.py',
             'Dividend yields & calendar', False),
-    Feature(13, 'Sector Analyzer', 'apps/SECTOR_ANALYZER.py',
+    Feature(12, 'Sector Analyzer', 'apps/SECTOR_ANALYZER.py',
             'Sector performance & leaders', False),
-    Feature(14, 'Technical Screener', 'apps/TECHNICAL_SCREENER.py',
+    Feature(13, 'Technical Screener', 'apps/TECHNICAL_SCREENER.py',
             'Find bullish technical setups', False),
-    Feature(15, 'Correlation Matrix', 'apps/CORRELATION_MATRIX.py',
+    Feature(14, 'Correlation Matrix', 'apps/CORRELATION_MATRIX.py',
             'Find correlations & hedges', True),
 ]
 
@@ -178,7 +176,15 @@ def execute_feature(feature: Feature) -> None:
             title="Feature Launcher"
         ))
         console.print()
-        args = get_stock_symbols()
+        symbols = get_stock_symbols()
+
+        # Handle different argument formats
+        if 'advanced_dashboard.py' in feature.file:
+            # advanced_dashboard requires --symbols flag
+            args = ['--symbols'] + symbols
+        else:
+            # Other scripts accept positional arguments
+            args = symbols
 
     try:
         cmd = [sys.executable, feature.file] + args

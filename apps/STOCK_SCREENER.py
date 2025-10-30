@@ -34,6 +34,28 @@ THEME = {
 }
 
 
+def create_sparkline(prices, width=7):
+    """Create sparkline from price data"""
+    if not prices or len(prices) < 2:
+        return "━━━━━"
+
+    prices = [p for p in prices if not pd.isna(p)]
+    if len(prices) < 2:
+        return "━━━━━"
+
+    min_p, max_p = min(prices), max(prices)
+    range_p = max_p - min_p if max_p != min_p else 1
+
+    chars = '▁▂▃▄▅▆▇█'
+    sparkline = ''.join(
+        chars[min(int(((p - min_p) / range_p) * 7), 7)]
+        for p in prices[-width:]
+    )
+
+    color = COLORS['up'] if prices[-1] > prices[0] else COLORS['down']
+    return f"[{color}]{sparkline}[/{color}]"
+
+
 # Popular stock universes
 STOCK_UNIVERSES = {
     'mega_cap': ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'BRK-B', 'V', 'UNH', 'XOM', 'JPM', 'JNJ', 'WMT', 'PG'],
@@ -123,6 +145,7 @@ def fetch_stock_metrics(symbol):
             'symbol': symbol,
             'name': info.get('longName', symbol),
             'price': current_price,
+            'price_history': df['Close'].tail(7).tolist(),
             'returns_1m': returns_1m,
             'returns_3m': returns_3m,
             'returns_1y': returns_1y,
@@ -136,7 +159,7 @@ def fetch_stock_metrics(symbol):
             'profit_margin': info.get('profitMargins', 0) * 100 if info.get('profitMargins') else 0,
             'roe': info.get('returnOnEquity', 0) * 100 if info.get('returnOnEquity') else 0,
             'roa': info.get('returnOnAssets', 0) * 100 if info.get('returnOnAssets') else 0,
-            'debt_equity': info.get('debtToEquity', 0) / 100 if info.get('debtToEquity') else 0,  # Convert to ratio
+            'debt_equity': info.get('debtToEquity', 0) / 100 if info.get('debtToEquity') else 0,
             'market_cap': info.get('marketCap', 0),
             'rsi': rsi,
             'dividend_yield': info.get('dividendYield', 0) * 100 if info.get('dividendYield') else 0,
@@ -436,6 +459,7 @@ def create_results_table(stocks, preset):
     table.add_column("Symbol", style="bold cyan", width=8)
     table.add_column("Name", style="white", width=18)
     table.add_column("Price", justify="right", width=9)
+    table.add_column("Trend", justify="center", width=10)
     table.add_column("1Y Ret", justify="right", width=9)
     table.add_column("P/E", justify="right", width=6)
     table.add_column("ROE", justify="right", width=7)
@@ -445,12 +469,14 @@ def create_results_table(stocks, preset):
 
     for i, stock in enumerate(stocks[:10], 1):
         ret_color = 'green' if stock['returns_1y'] > 0 else 'red'
+        sparkline = create_sparkline(stock.get('price_history', []))
 
         table.add_row(
             str(i),
             stock['symbol'],
             stock['name'][:25],
             f"${stock['price']:.2f}",
+            sparkline,
             f"[{ret_color}]{stock['returns_1y']:+.1f}%[/{ret_color}]",
             f"{stock['pe']:.1f}" if stock['pe'] > 0 else "N/A",
             f"{stock['roe']:.1f}%" if stock['roe'] > 0 else "N/A",

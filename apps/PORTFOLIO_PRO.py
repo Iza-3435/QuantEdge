@@ -46,6 +46,28 @@ THEME = {
 }
 
 
+def create_sparkline(prices, width=7):
+    """Create sparkline from price data"""
+    if not prices or len(prices) < 2:
+        return "━━━━━"
+
+    prices = [p for p in prices if not pd.isna(p)]
+    if len(prices) < 2:
+        return "━━━━━"
+
+    min_p, max_p = min(prices), max(prices)
+    range_p = max_p - min_p if max_p != min_p else 1
+
+    chars = '▁▂▃▄▅▆▇█'
+    sparkline = ''.join(
+        chars[min(int(((p - min_p) / range_p) * 7), 7)]
+        for p in prices[-width:]
+    )
+
+    color = COLORS['up'] if prices[-1] > prices[0] else COLORS['down']
+    return f"[{color}]{sparkline}[/{color}]"
+
+
 # Database setup
 DB_PATH = 'portfolio_data.db'
 
@@ -159,9 +181,10 @@ def calculate_portfolio_metrics(holdings_df, prices):
     total_pnl = holdings_df['pnl'].sum()
     total_pnl_pct = (total_pnl / total_cost * 100) if total_cost > 0 else 0
 
-    # Fetch historical data for risk metrics
+    # Fetch historical data for risk metrics and sparklines
     symbols = holdings_df['symbol'].tolist()
     returns_data = []
+    price_history = {}
 
     for symbol in symbols:
         try:
@@ -174,6 +197,8 @@ def calculate_portfolio_metrics(holdings_df, prices):
                     'returns': returns,
                     'weight': holdings_df[holdings_df['symbol'] == symbol]['weight'].iloc[0] / 100
                 })
+                # Store last 7 days of prices for sparkline
+                price_history[symbol] = hist['Close'].tail(7).tolist()
         except:
             pass
 
@@ -235,6 +260,7 @@ def calculate_portfolio_metrics(holdings_df, prices):
         'cvar_95': cvar_95,
         'max_drawdown': max_drawdown,
         'beta': beta,
+        'price_history': price_history,
     }
 
 
@@ -408,9 +434,13 @@ def view_portfolio(portfolio_id):
     holdings_table.add_column("P&L", justify="right")
     holdings_table.add_column("P&L %", justify="right")
     holdings_table.add_column("Weight", justify="right")
+    holdings_table.add_column("Trend", justify="center", width=10)
+
+    price_hist = metrics.get('price_history', {})
 
     for _, row in holdings_df.iterrows():
         pnl_color = "green" if row['pnl'] >= 0 else "red"
+        sparkline = create_sparkline(price_hist.get(row['symbol'], []))
 
         holdings_table.add_row(
             row['symbol'],
@@ -420,7 +450,8 @@ def view_portfolio(portfolio_id):
             f"${row['market_value']:,.2f}",
             f"[{pnl_color}]${row['pnl']:,.2f}[/{pnl_color}]",
             f"[{pnl_color}]{row['pnl_pct']:+.2f}%[/{pnl_color}]",
-            f"{row['weight']:.1f}%"
+            f"{row['weight']:.1f}%",
+            sparkline
         )
 
     console.print(holdings_table)

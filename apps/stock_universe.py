@@ -87,6 +87,124 @@ SP500_STOCKS = [
 # Remove duplicates and sort
 SP500_STOCKS = sorted(list(set(SP500_STOCKS)))
 
+# S&P MidCap 400 - Mid-sized companies ($2B - $10B market cap)
+SP400_MIDCAP = [
+    # Technology
+    'ACIW', 'ALRM', 'AIT', 'ALSN', 'AMBA', 'APPF', 'ARLO', 'AVAV', 'AVT', 'AZPN',
+    'BOX', 'CACI', 'CALX', 'CDAY', 'CELH', 'CHKP', 'CXT', 'DOMO', 'DT', 'EEFT',
+    'EIGI', 'EVBG', 'EXLS', 'FOXF', 'GDDY', 'GIL', 'GLOB', 'GNRC', 'GTN', 'HLIT',
+    'ICHR', 'IGT', 'INSP', 'IOSP', 'IT', 'KD', 'LOGI', 'MGNI', 'MIME', 'MKSI',
+    'MTSI', 'NEWR', 'NSIT', 'PEGA', 'PI', 'PLXS', 'PTC', 'QLYS', 'RNG', 'SAIC',
+    'SAM', 'SLAB', 'SMTC', 'SPSC', 'SSYS', 'TTMI', 'UCTT', 'VIAV', 'VRRM', 'WEX',
+
+    # Industrials
+    'AAT', 'ABM', 'ACM', 'AEO', 'AGX', 'ALK', 'APOG', 'ARCB', 'ARI', 'AROC',
+    'ASH', 'ATI', 'AYI', 'BCC', 'BECN', 'BLD', 'BMI', 'BV', 'CACI', 'CBT',
+    'CECO', 'CHE', 'CIR', 'CRS', 'CSWI', 'CW', 'DORM', 'DY', 'EEFT', 'EPC',
+    'ESE', 'ESNT', 'FLS', 'FN', 'FTRE', 'GFF', 'GVA', 'HI', 'HIW', 'HNI',
+    'HQY', 'HUBG', 'HXL', 'ITT', 'JBLU', 'JBT', 'KAMN', 'KAR', 'KEX', 'KFY',
+    'KNX', 'KTOS', 'LAD', 'LECO', 'LII', 'LSTR', 'LXU', 'M', 'MATW', 'MLKN',
+    'MLM', 'MLNX', 'MOG-A', 'MSA', 'MTZ', 'NAVI', 'NEU', 'NFG', 'NNN', 'NSP',
+
+    # Healthcare
+    'ACHC', 'ADMA', 'AMED', 'AMN', 'AMSWA', 'ANET', 'ARVN', 'ATRC', 'AVNS', 'BKD',
+    'BLFS', 'BRC', 'BRKR', 'CERT', 'CHRS', 'CNC', 'CNK', 'CROX', 'CRVL', 'CYH',
+    'CYTK', 'DNLI', 'DRH', 'DSGX', 'EDUC', 'EFSC', 'EHC', 'EHTH', 'ENSG', 'EPAM',
+    'EVH', 'EWBC', 'EXEL', 'FHI', 'FMS', 'FORM', 'GLPI', 'GMS', 'GSHD', 'HAYW',
+    'HCA', 'HCSG', 'HQY', 'HRMY', 'HSTM', 'IDA', 'IRWD', 'LMAT', 'LRN', 'LSTR',
+
+    # Financials
+    'ABCB', 'AUB', 'BANF', 'BANR', 'BBW', 'BCPC', 'BDC', 'BOKF', 'BPOP', 'BRKL',
+    'BXS', 'CADE', 'CASH', 'CATY', 'CBRL', 'CBU', 'CCOI', 'CFR', 'CHCO', 'COOP',
+    'CPF', 'CRVL', 'CSFL', 'CTRE', 'DCOM', 'DFS', 'EBSB', 'EFSC', 'EGBN', 'ENS',
+    'ESSA', 'EWBC', 'FCFS', 'FFBC', 'FFIN', 'FHB', 'FHN', 'FIBK', 'FISI', 'FMER',
+    'FNB', 'FRME', 'FULT', 'GBCI', 'HBAN', 'HBT', 'HMN', 'HOMB', 'HOPE', 'HTLF',
+    'IBCP', 'IBOC', 'IBTX', 'INDB', 'LKFN', 'MGRC', 'MPB', 'NBTB', 'NWBI', 'OFG',
+
+    # Consumer Discretionary
+    'AAP', 'AAWW', 'ABEO', 'ABG', 'AEO', 'AN', 'ANF', 'ARW', 'ASO', 'AXL',
+    'AZZ', 'BBWI', 'BFAM', 'BJ', 'BOOT', 'BREW', 'BURL', 'CAKE', 'CAL', 'CCS',
+    'CHUY', 'CKH', 'CRI', 'CROX', 'CVCO', 'CWH', 'DAN', 'DAVA', 'DBI', 'DDS',
+    'DENN', 'DIN', 'DKS', 'DNOW', 'DRQ', 'DRVN', 'EAT', 'EBAY', 'ETSY', 'FIVE',
+    'FL', 'FOUR', 'FOX', 'GCO', 'GES', 'GPI', 'GRBK', 'GVA', 'HBI', 'HGV',
+
+    # Energy
+    'APA', 'AR', 'AROC', 'BKR', 'CIVI', 'CLB', 'CRC', 'CRGY', 'CRK', 'DEN',
+    'DNR', 'DRVN', 'ESTE', 'FANG', 'FET', 'GPOR', 'HES', 'HP', 'LEU', 'LPI',
+    'MGY', 'MUR', 'NBR', 'NFE', 'NOG', 'OII', 'PTEN', 'RES', 'RIG', 'SDRL',
+
+    # Materials
+    'AA', 'AKS', 'AMRC', 'AMX', 'ATKR', 'ATR', 'BCPC', 'BCC', 'BERY', 'CCK',
+    'CLF', 'CLW', 'CRS', 'CSWC', 'DNOW', 'FUL', 'GEF', 'GPRE', 'HCC', 'IOSP',
+    'KWR', 'LECO', 'NEU', 'OLN', 'POOL', 'RYAM', 'SCCO', 'SEE', 'SLGN', 'SMG',
+
+    # Real Estate
+    'AAT', 'ACC', 'AHH', 'AIV', 'AKR', 'BDN', 'BFS', 'BNL', 'BRX', 'BXP',
+    'CIO', 'CLI', 'COLD', 'CONE', 'CUZ', 'DEI', 'DRH', 'EGP', 'EPR', 'EQC',
+    'ESRT', 'FR', 'GNL', 'GPT', 'GTY', 'HIW', 'HMC', 'HR', 'IRT', 'JBGS',
+
+    # Utilities
+    'AEE', 'AES', 'ALE', 'AVNS', 'AVA', 'BKH', 'CPK', 'IDA', 'MDU', 'NJR',
+    'NWE', 'OGE', 'ORA', 'PNM', 'POR', 'SJW', 'SR', 'SWX', 'UTL', 'WR',
+]
+
+# S&P SmallCap 600 - Small companies ($850M - $3.6B market cap)
+SP600_SMALLCAP = [
+    # Technology
+    'AAON', 'AEIS', 'AGLE', 'AIN', 'ATEN', 'ATTO', 'AVDL', 'AVO', 'BCPC', 'BOOM',
+    'BRC', 'CALX', 'CCMP', 'CMCO', 'CNS', 'COHU', 'CONN', 'CTS', 'CUI', 'CVLT',
+    'CXW', 'CYBE', 'DLB', 'DGII', 'DIOD', 'DLX', 'DORM', 'EACO', 'EVTC', 'EXTR',
+    'FOXF', 'FUL', 'GEO', 'GIII', 'GKOS', 'HCKT', 'HHS', 'HIBB', 'HLIT', 'HMSY',
+    'HSII', 'HSTM', 'ICFI', 'IDT', 'IEC', 'INFN', 'IRBT', 'ITIC', 'KAMN', 'KELYA',
+
+    # Industrials
+    'AAP', 'ABG', 'ACA', 'ACLS', 'AEL', 'AIN', 'ALG', 'AMED', 'ARI', 'ARL',
+    'ATEX', 'AVO', 'AZZ', 'B', 'BBW', 'BC', 'BCO', 'BHE', 'BLBD', 'BMI',
+    'BV', 'CAL', 'CATO', 'CBZ', 'CENX', 'CKH', 'CLC', 'CLW', 'CMC', 'CMCO',
+    'CNMD', 'CNO', 'CNXN', 'CODE', 'COFS', 'CRS', 'CSL', 'CSV', 'CTO', 'CTS',
+    'CVI', 'CW', 'DAN', 'DDD', 'DLX', 'DNB', 'DORM', 'DRQ', 'DXC', 'EARN',
+
+    # Healthcare
+    'ADUS', 'AEIS', 'AHCO', 'AHH', 'ALKS', 'AMED', 'AMKR', 'AMSF', 'AMSWA', 'ANIP',
+    'ANF', 'ANIK', 'APLE', 'ARLP', 'ASND', 'ASPS', 'AVO', 'AVTR', 'BCOR', 'BDC',
+    'BGFV', 'BHE', 'BLBD', 'BRC', 'BRBR', 'BRKL', 'CABO', 'CALM', 'CATO', 'CBRL',
+    'CBU', 'CCMP', 'CCS', 'CDNS', 'CENT', 'CENTA', 'CERS', 'CEVA', 'CHRS', 'CIR',
+    'CLC', 'CLFD', 'CLGX', 'CLH', 'CLNE', 'CLPR', 'CLVS', 'CNMD', 'CNO', 'CNS',
+
+    # Financials
+    'AAIC', 'ABCB', 'ABG', 'ABTX', 'ACBI', 'ACNB', 'AEIS', 'AFBI', 'ALHC', 'ALRS',
+    'AMAL', 'AMBP', 'AMSF', 'ANAT', 'ANDE', 'ANF', 'ANIK', 'APAM', 'APOG', 'APPY',
+    'AROW', 'ASBI', 'ASPS', 'ASTE', 'ATEK', 'ATEX', 'ATRO', 'ATRI', 'AUB', 'AUBN',
+    'AVO', 'AVPT', 'AWIN', 'AWR', 'AX', 'AXL', 'BANC', 'BANF', 'BANR', 'BATRA',
+    'BATRK', 'BC', 'BCBP', 'BCPC', 'BDGE', 'BDL', 'BFST', 'BGC', 'BGSF', 'BHB',
+
+    # Consumer Discretionary
+    'AAP', 'AAWW', 'ABEO', 'ABG', 'ACA', 'ACEL', 'ACLS', 'AEL', 'AEO', 'AIN',
+    'ALCO', 'ALE', 'ALG', 'ANF', 'APOG', 'ARI', 'ARL', 'AROW', 'ARQL', 'ARVN',
+    'ASB', 'ASBI', 'ASH', 'ASGN', 'ASTE', 'AVO', 'AVTR', 'AXL', 'AYI', 'AZPN',
+    'BANF', 'BANR', 'BBW', 'BC', 'BCC', 'BCOR', 'BDC', 'BDL', 'BECN', 'BGFV',
+    'BHE', 'BHLB', 'BJ', 'BJRI', 'BKD', 'BKH', 'BKU', 'BLBD', 'BLFS', 'BLMN',
+
+    # Energy
+    'AEP', 'AR', 'AROC', 'BCEI', 'BOOM', 'CDEV', 'CLR', 'CRC', 'CRGY', 'CRK',
+    'DEN', 'ESTE', 'GPOR', 'GRNT', 'HP', 'LBRT', 'LPI', 'MTDR', 'NBR', 'NR',
+    'OAS', 'PTEN', 'REI', 'REPX', 'RES', 'TALO', 'UEC', 'VNOM', 'WTI', 'XEC',
+
+    # Materials
+    'AA', 'AAON', 'ACCO', 'AIN', 'AKS', 'ANDE', 'APOG', 'ARCB', 'ASTE', 'ATI',
+    'ATKR', 'AVO', 'AXL', 'BCPC', 'BCC', 'BERY', 'BL', 'BMI', 'BOOM', 'BPMC',
+
+    # Real Estate
+    'AAT', 'AAXN', 'ALEX', 'AHH', 'AHR', 'AKR', 'ALEX', 'APLE', 'ARI', 'BANR',
+    'BFS', 'BNL', 'BRX', 'BXMT', 'CBL', 'CIO', 'CTO', 'CUZ', 'DEI', 'DHC',
+
+    # Utilities
+    'AVA', 'AWR', 'BKH', 'CNSL', 'MSEX', 'NJR', 'NWE', 'OGE', 'OTTR', 'PNM',
+]
+
+# Combined S&P 1500 (S&P 500 + MidCap 400 + SmallCap 600)
+SP1500_ALL_STOCKS = sorted(list(set(SP500_STOCKS + SP400_MIDCAP + SP600_SMALLCAP)))
+
 # Sector classifications - Expanded to include all S&P 500 stocks
 SECTORS = {
     'Technology': [

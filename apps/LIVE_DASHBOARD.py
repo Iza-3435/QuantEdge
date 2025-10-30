@@ -44,6 +44,28 @@ THEME = {
 }
 
 
+def create_sparkline(prices, width=7):
+    """Create sparkline from price data"""
+    if not prices or len(prices) < 2:
+        return "━━━━━"
+
+    prices = [p for p in prices if not pd.isna(p)]
+    if len(prices) < 2:
+        return "━━━━━"
+
+    min_p, max_p = min(prices), max(prices)
+    range_p = max_p - min_p if max_p != min_p else 1
+
+    chars = '▁▂▃▄▅▆▇█'
+    sparkline = ''.join(
+        chars[min(int(((p - min_p) / range_p) * 7), 7)]
+        for p in prices[-width:]
+    )
+
+    color = COLORS['up'] if prices[-1] > prices[0] else COLORS['down']
+    return f"[{color}]{sparkline}[/{color}]"
+
+
 # Global data store
 LIVE_DATA = {
     'market': {},
@@ -57,24 +79,11 @@ LIVE_DATA = {
 # Database path
 DB_PATH = 'investment_platform.db'
 
-# Color scheme
-COLORS = {
-    'up': 'green',
-    'down': 'red',
-    'neutral': 'yellow',
-    'bright_up': 'bright_green',
-    'bright_down': 'bright_red'
-}
-
 
 def get_color(change_pct):
     """Get color based on change intensity"""
-    if change_pct > 2:
-        return COLORS['bright_up']
-    elif change_pct > 0:
+    if change_pct > 0:
         return COLORS['up']
-    elif change_pct < -2:
-        return COLORS['bright_down']
     elif change_pct < 0:
         return COLORS['down']
     else:
@@ -97,6 +106,10 @@ def fetch_market_data():
             try:
                 ticker = yf.Ticker(symbol)
 
+                # Get historical data for sparkline
+                hist = ticker.history(period='5d')
+                prices = hist['Close'].tolist() if not hist.empty else []
+
                 # Try fast_info first (fastest)
                 try:
                     fast = ticker.fast_info
@@ -111,6 +124,7 @@ def fetch_market_data():
                             'price': current_price,
                             'change': change,
                             'change_pct': change_pct,
+                            'prices': prices,
                             'source': 'realtime'
                         }
                 except:
@@ -127,6 +141,7 @@ def fetch_market_data():
                             'price': current_price,
                             'change': change,
                             'change_pct': change_pct,
+                            'prices': prices,
                             'source': 'info'
                         }
             except:
@@ -359,6 +374,7 @@ def create_market_panel(market_data):
     table.add_column("Index", style="white", width=10)
     table.add_column("Price", justify="right", width=12)
     table.add_column("Change", justify="right", width=12)
+    table.add_column("Trend", justify="center", width=10)
 
     for name, data in market_data.items():
         price = data['price']
@@ -366,10 +382,13 @@ def create_market_panel(market_data):
         color = get_color(change_pct)
         arrow = '▲' if change_pct > 0 else '▼' if change_pct < 0 else '━'
 
+        sparkline = create_sparkline(data.get('prices', []))
+
         table.add_row(
             name,
             f"${price:,.2f}",
-            f"[{color}]{arrow} {change_pct:+.2f}%[/{color}]"
+            f"[{color}]{arrow} {change_pct:+.2f}%[/{color}]",
+            sparkline
         )
 
     # Add live indicator
@@ -650,24 +669,34 @@ def main():
 
     # Show loading message
     console.print("\n[bold cyan]Launching Live Dashboard...[/bold cyan]\n")
-    console.print("[bright_black]Fetching initial data...[/bright_black]")
 
-    # Fetch initial data
+    console.print("[bright_black]→ Fetching market indices...[/bright_black]")
     LIVE_DATA['market'] = fetch_market_data()
+    console.print("[green]✓ Market data loaded[/green]")
+
+    console.print("[bright_black]→ Loading portfolio data...[/bright_black]")
     LIVE_DATA['portfolio'] = fetch_portfolio_data()
+    console.print("[green]✓ Portfolio loaded[/green]")
+
+    console.print("[bright_black]→ Checking alerts...[/bright_black]")
     LIVE_DATA['alerts'] = fetch_alerts()
-    LIVE_DATA['options'] = fetch_options_data()  # NEW: Fetch initial options
+    console.print("[green]✓ Alerts checked[/green]")
+
+    console.print("[bright_black]→ Fetching options data...[/bright_black]")
+    LIVE_DATA['options'] = fetch_options_data()
+    console.print("[green]✓ Options loaded[/green]")
+
     LIVE_DATA['last_update'] = datetime.now()
     LIVE_DATA['refresh_count'] = 1
 
-    console.print("[green]✓ Data loaded![/green]")
-    time.sleep(1)
+    time.sleep(0.5)
 
     # Start background update thread
+    console.print("\n[bright_black]→ Starting live updates...[/bright_black]")
     update_thread = threading.Thread(target=update_dashboard_data, daemon=True)
     update_thread.start()
 
-    console.print("[green]✓ Live updates started![/green]")
+    console.print("[green]✓ Live updates active![/green]")
     console.print("\n[bright_blue]Starting dashboard in 2 seconds...[/bright_blue]")
     time.sleep(2)
 
