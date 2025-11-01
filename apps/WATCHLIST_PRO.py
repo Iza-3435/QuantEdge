@@ -8,6 +8,7 @@ import sqlite3
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+from typing import List, Dict, Optional, Any, Tuple
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -20,11 +21,17 @@ import os
 
 console = Console()
 
+DB_PATH = 'investment_platform.db'
+
 COLORS = {
     'up': 'green',
     'down': 'red',
     'neutral': 'white',
-    'dim': 'bright_black'
+    'dim': 'bright_black',
+    'success': 'green',
+    'alert': 'red',
+    'warning': 'yellow',
+    'info': 'cyan'
 }
 
 THEME = {
@@ -36,24 +43,16 @@ THEME = {
 }
 
 
-# Database path
-DB_PATH = 'investment_platform.db'
+def init_database() -> None:
+    """
+    Initialize watchlist database with schema.
 
-# Color scheme
-COLORS = {
-    'up': 'green',
-    'down': 'red',
-    'neutral': 'white',
-    'dim': 'bright_black'
-}
-
-
-def init_database():
-    """Initialize watchlist database"""
+    Creates tables for watchlists, watchlist_items, and price_alerts.
+    Sets up default watchlists if database is empty.
+    """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    # Watchlists table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS watchlists (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,7 +62,6 @@ def init_database():
         )
     ''')
 
-    # Watchlist items table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS watchlist_items (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -79,7 +77,6 @@ def init_database():
         )
     ''')
 
-    # Price alerts table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS price_alerts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,7 +89,6 @@ def init_database():
         )
     ''')
 
-    # Create default watchlists if they don't exist
     cursor.execute("SELECT COUNT(*) FROM watchlists")
     if cursor.fetchone()[0] == 0:
         default_watchlists = [
@@ -111,8 +107,13 @@ def init_database():
     conn.close()
 
 
-def get_watchlists():
-    """Get all watchlists"""
+def get_watchlists() -> List[Tuple[int, str, str, str]]:
+    """
+    Retrieve all watchlists from database.
+
+    Returns:
+        List of tuples (id, name, description, created_date)
+    """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
@@ -123,8 +124,16 @@ def get_watchlists():
     return watchlists
 
 
-def get_watchlist_items(watchlist_id):
-    """Get all items in a watchlist"""
+def get_watchlist_items(watchlist_id: int) -> List[Tuple]:
+    """
+    Get all items in a watchlist.
+
+    Args:
+        watchlist_id: Database ID of the watchlist
+
+    Returns:
+        List of tuples containing item data (id, symbol, added_date, target_price, stop_loss, notes, alert_enabled)
+    """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
@@ -140,8 +149,21 @@ def get_watchlist_items(watchlist_id):
     return items
 
 
-def add_to_watchlist(watchlist_id, symbol, target_price=None, stop_loss=None, notes=None):
-    """Add stock to watchlist"""
+def add_to_watchlist(watchlist_id: int, symbol: str, target_price: Optional[float] = None,
+                     stop_loss: Optional[float] = None, notes: Optional[str] = None) -> bool:
+    """
+    Add stock to watchlist with optional target price and stop loss.
+
+    Args:
+        watchlist_id: Database ID of the watchlist
+        symbol: Stock ticker symbol
+        target_price: Optional target price for alerts
+        stop_loss: Optional stop loss price for alerts
+        notes: Optional notes about the stock
+
+    Returns:
+        True if added successfully, False if stock already exists
+    """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
@@ -160,8 +182,17 @@ def add_to_watchlist(watchlist_id, symbol, target_price=None, stop_loss=None, no
         conn.close()
 
 
-def remove_from_watchlist(watchlist_id, symbol):
-    """Remove stock from watchlist"""
+def remove_from_watchlist(watchlist_id: int, symbol: str) -> bool:
+    """
+    Remove stock from watchlist.
+
+    Args:
+        watchlist_id: Database ID of the watchlist
+        symbol: Stock ticker symbol
+
+    Returns:
+        True if removed successfully, False otherwise
+    """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
@@ -176,12 +207,20 @@ def remove_from_watchlist(watchlist_id, symbol):
     return deleted
 
 
-def create_sparkline(prices, width=7):
-    """Create ASCII sparkline from price list"""
+def create_sparkline(prices: List[float], width: int = 7) -> str:
+    """
+    Create ASCII sparkline chart from price data.
+
+    Args:
+        prices: List of price values
+        width: Number of bars to display
+
+    Returns:
+        Formatted sparkline string with color coding
+    """
     if not prices or len(prices) < 2:
         return "━━━━━━━"
 
-    # Remove any NaN values
     prices = [p for p in prices if not pd.isna(p)]
     if len(prices) < 2:
         return "━━━━━━━"
@@ -191,17 +230,24 @@ def create_sparkline(prices, width=7):
 
     chars = '▁▂▃▄▅▆▇█'
     sparkline = ''
-    for price in prices[-width:]:  # Last 'width' data points
+    for price in prices[-width:]:
         index = int(((price - min_p) / range_p) * 7)
         sparkline += chars[min(index, 7)]
 
-    # Color code: green if trending up, red if down
     color = 'green' if prices[-1] > prices[0] else 'red' if prices[-1] < prices[0] else 'white'
     return f"[{color}]{sparkline}[/{color}]"
 
 
-def get_stock_data(symbol):
-    """Fetch current stock data"""
+def get_stock_data(symbol: str) -> Optional[Dict[str, Any]]:
+    """
+    Fetch comprehensive stock data including technical indicators.
+
+    Args:
+        symbol: Stock ticker symbol
+
+    Returns:
+        Dictionary containing stock metrics, or None if fetch fails
+    """
     try:
         ticker = yf.Ticker(symbol)
         hist = ticker.history(period='5d')
@@ -215,15 +261,12 @@ def get_stock_data(symbol):
         change = current_price - prev_close
         change_pct = (change / prev_close) * 100
 
-        # Get sparkline prices (last 5 days)
         sparkline_prices = hist['Close'].tolist()
 
-        # Calculate additional metrics
         hist_30d = ticker.history(period='30d')
         returns = hist_30d['Close'].pct_change()
         volatility = returns.std() * np.sqrt(252) * 100
 
-        # RSI calculation
         delta = hist_30d['Close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
@@ -231,7 +274,6 @@ def get_stock_data(symbol):
         rsi = 100 - (100 / (1 + rs))
         current_rsi = rsi.iloc[-1] if not rsi.empty else 50
 
-        # Moving averages
         ma_50 = info.get('fiftyDayAverage', current_price)
         ma_200 = info.get('twoHundredDayAverage', current_price)
 
@@ -257,8 +299,20 @@ def get_stock_data(symbol):
         return None
 
 
-def check_alerts(symbol, current_price, target_price, stop_loss):
-    """Check if price alerts should be triggered"""
+def check_alerts(symbol: str, current_price: float, target_price: Optional[float],
+                 stop_loss: Optional[float]) -> List[Dict[str, str]]:
+    """
+    Check if price alerts should be triggered.
+
+    Args:
+        symbol: Stock ticker symbol
+        current_price: Current stock price
+        target_price: Optional target price threshold
+        stop_loss: Optional stop loss threshold
+
+    Returns:
+        List of alert dictionaries with type, message, and color
+    """
     alerts = []
 
     if target_price and current_price >= target_price:
@@ -278,11 +332,18 @@ def check_alerts(symbol, current_price, target_price, stop_loss):
     return alerts
 
 
-def check_technical_alerts(data):
-    """Check technical indicator alerts"""
+def check_technical_alerts(data: Dict[str, Any]) -> List[Dict[str, str]]:
+    """
+    Check technical indicator alerts (RSI, moving averages).
+
+    Args:
+        data: Dictionary containing stock metrics
+
+    Returns:
+        List of alert dictionaries with type, message, and color
+    """
     alerts = []
 
-    # RSI alerts
     if data['rsi'] > 70:
         alerts.append({
             'type': 'RSI_OVERBOUGHT',
@@ -296,7 +357,6 @@ def check_technical_alerts(data):
             'color': COLORS['info']
         })
 
-    # Moving average crossovers
     if data['price'] > data['ma_50'] > data['ma_200']:
         alerts.append({
             'type': 'GOLDEN_CROSS',
@@ -313,8 +373,17 @@ def check_technical_alerts(data):
     return alerts
 
 
-def create_watchlist_table(watchlist_name, items_data):
-    """Create watchlist display table"""
+def create_watchlist_table(watchlist_name: str, items_data: List[Tuple]) -> Table:
+    """
+    Create formatted watchlist display table.
+
+    Args:
+        watchlist_name: Name of the watchlist
+        items_data: List of tuples containing (item_id, stock_data, target, stop)
+
+    Returns:
+        Rich Table object with formatted watchlist data
+    """
     table = Table(
         title=f"Watchlist: {watchlist_name}",
         box=box.SQUARE,
@@ -386,8 +455,12 @@ def create_watchlist_table(watchlist_name, items_data):
     return table
 
 
-def view_watchlist():
-    """View watchlist with live data"""
+def view_watchlist() -> None:
+    """
+    Display watchlist with live stock data and alerts.
+
+    Prompts user to select watchlist and displays formatted table.
+    """
     watchlists = get_watchlists()
 
     if not watchlists:
@@ -433,8 +506,12 @@ def view_watchlist():
     console.print()
 
 
-def add_stock_menu():
-    """Interactive menu to add stock to watchlist"""
+def add_stock_menu() -> None:
+    """
+    Interactive menu to add stock to watchlist.
+
+    Prompts for watchlist selection, stock symbol, and optional price targets.
+    """
     watchlists = get_watchlists()
 
     if not watchlists:
@@ -500,8 +577,12 @@ def add_stock_menu():
         console.print(f"\n[yellow]Failed to add {symbol}[/yellow]")
 
 
-def remove_stock_menu():
-    """Interactive menu to remove stock from watchlist"""
+def remove_stock_menu() -> None:
+    """
+    Interactive menu to remove stock from watchlist.
+
+    Prompts for watchlist and stock selection before removal.
+    """
     watchlists = get_watchlists()
 
     if not watchlists:
@@ -559,8 +640,8 @@ def remove_stock_menu():
             console.print(f"[red]Failed to remove {symbol}[/red]")
 
 
-def show_main_menu():
-    """Show main menu"""
+def show_main_menu() -> None:
+    """Display main menu options in formatted table."""
     table = Table(box=box.SIMPLE_HEAVY, show_header=False, padding=(0, 2), row_styles=[THEME['row_even'], THEME['row_odd']], border_style=THEME['border'])
     table.add_column("Option", style="white bold", width=3)
     table.add_column("Action", style="white")
@@ -574,8 +655,12 @@ def show_main_menu():
     console.print(Panel(table, title="[bold white]WATCHLIST MANAGER[/bold white]", border_style=THEME['border'], style=THEME['panel_bg']))
 
 
-def daily_summary():
-    """Show daily summary of all watchlists"""
+def daily_summary() -> None:
+    """
+    Display daily summary of all watchlists with alerts.
+
+    Shows all stocks with active alerts across all watchlists.
+    """
     watchlists = get_watchlists()
 
     console.print("\n[bold white]DAILY WATCHLIST SUMMARY[/bold white]\n")
@@ -618,8 +703,12 @@ def daily_summary():
         console.print(f"[yellow]Total Alerts: {total_alerts}[/yellow]\n")
 
 
-def main():
-    """Main interactive loop"""
+def main() -> None:
+    """
+    Main interactive menu loop.
+
+    Provides options for viewing, adding, removing stocks and viewing daily summary.
+    """
     init_database()
 
     while True:
