@@ -18,6 +18,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Any, Tuple
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -46,8 +47,17 @@ THEME = {
 }
 
 
-def create_sparkline(prices, width=7):
-    """Create sparkline from price data"""
+def create_sparkline(prices: List[float], width: int = 7) -> str:
+    """
+    Create ASCII sparkline chart from price data.
+
+    Args:
+        prices: List of price values
+        width: Number of bars to display
+
+    Returns:
+        Formatted sparkline string with color
+    """
     if not prices or len(prices) < 2:
         return "━━━━━"
 
@@ -72,12 +82,15 @@ def create_sparkline(prices, width=7):
 DB_PATH = 'portfolio_data.db'
 
 
-def init_database():
-    """Initialize SQLite database with proper schema"""
+def init_database() -> None:
+    """
+    Initialize SQLite database with portfolio schema.
+
+    Creates tables for portfolios, holdings, transactions, and watchlist.
+    """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    # Portfolios table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS portfolios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -88,7 +101,6 @@ def init_database():
         )
     ''')
 
-    # Holdings table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS holdings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,7 +115,6 @@ def init_database():
         )
     ''')
 
-    # Transactions table (audit trail)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS transactions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -119,7 +130,6 @@ def init_database():
         )
     ''')
 
-    # Watchlist table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS watchlist (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -136,13 +146,20 @@ def init_database():
     conn.close()
 
 
-def get_current_prices(symbols):
-    """Fetch current prices for multiple symbols efficiently"""
+def get_current_prices(symbols: List[str]) -> Dict[str, Dict[str, float]]:
+    """
+    Fetch current prices for multiple symbols using batch API call.
+
+    Args:
+        symbols: List of stock ticker symbols
+
+    Returns:
+        Dictionary mapping symbols to price data (price, change, change_pct, volume)
+    """
     if not symbols:
         return {}
 
     try:
-        # Batch fetch for efficiency
         tickers = yf.Tickers(' '.join(symbols))
         prices = {}
         for symbol in symbols:
@@ -162,12 +179,20 @@ def get_current_prices(symbols):
         return {symbol: {'price': 0, 'change': 0, 'change_pct': 0, 'volume': 0} for symbol in symbols}
 
 
-def calculate_portfolio_metrics(holdings_df, prices):
-    """Calculate comprehensive portfolio metrics"""
+def calculate_portfolio_metrics(holdings_df: pd.DataFrame, prices: Dict[str, Dict[str, float]]) -> Dict[str, Any]:
+    """
+    Calculate comprehensive portfolio metrics including risk analytics.
+
+    Args:
+        holdings_df: DataFrame containing portfolio holdings
+        prices: Dictionary of current price data by symbol
+
+    Returns:
+        Dictionary containing portfolio metrics, risk analytics, and price history
+    """
     if holdings_df.empty:
         return {}
 
-    # Add current prices
     holdings_df['current_price'] = holdings_df['symbol'].map(lambda x: prices.get(x, {}).get('price', 0))
     holdings_df['market_value'] = holdings_df['quantity'] * holdings_df['current_price']
     holdings_df['cost_basis'] = holdings_df['quantity'] * holdings_df['avg_cost']
@@ -175,13 +200,11 @@ def calculate_portfolio_metrics(holdings_df, prices):
     holdings_df['pnl_pct'] = (holdings_df['pnl'] / holdings_df['cost_basis'] * 100).fillna(0)
     holdings_df['weight'] = holdings_df['market_value'] / holdings_df['market_value'].sum() * 100
 
-    # Portfolio totals
     total_value = holdings_df['market_value'].sum()
     total_cost = holdings_df['cost_basis'].sum()
     total_pnl = holdings_df['pnl'].sum()
     total_pnl_pct = (total_pnl / total_cost * 100) if total_cost > 0 else 0
 
-    # Fetch historical data for risk metrics and sparklines
     symbols = holdings_df['symbol'].tolist()
     returns_data = []
     price_history = {}
@@ -197,38 +220,31 @@ def calculate_portfolio_metrics(holdings_df, prices):
                     'returns': returns,
                     'weight': holdings_df[holdings_df['symbol'] == symbol]['weight'].iloc[0] / 100
                 })
-                # Store last 7 days of prices for sparkline
                 price_history[symbol] = hist['Close'].tail(7).tolist()
         except:
             pass
 
-    # Portfolio returns (weighted)
     if returns_data:
         portfolio_returns = pd.Series(0.0, index=returns_data[0]['returns'].index)
         for data in returns_data:
             aligned_returns = data['returns'].reindex(portfolio_returns.index, fill_value=0)
             portfolio_returns += aligned_returns * data['weight']
 
-        # Risk metrics
         volatility = portfolio_returns.std() * np.sqrt(252) * 100
         sharpe = (portfolio_returns.mean() * 252 - 0.03) / (portfolio_returns.std() * np.sqrt(252)) if portfolio_returns.std() > 0 else 0
 
-        # Downside metrics
         downside_returns = portfolio_returns[portfolio_returns < 0]
         downside_std = downside_returns.std() * np.sqrt(252)
         sortino = (portfolio_returns.mean() * 252 - 0.03) / downside_std if downside_std > 0 else 0
 
-        # VaR and CVaR (95%)
         var_95 = np.percentile(portfolio_returns, 5) * 100
         cvar_95 = portfolio_returns[portfolio_returns <= np.percentile(portfolio_returns, 5)].mean() * 100
 
-        # Max drawdown
         cumulative = (1 + portfolio_returns).cumprod()
         running_max = cumulative.expanding().max()
         drawdown = (cumulative - running_max) / running_max
         max_drawdown = drawdown.min() * 100
 
-        # Beta vs SPY
         try:
             spy = yf.Ticker('SPY').history(period='1y')['Close'].pct_change().dropna()
             aligned_spy = spy.reindex(portfolio_returns.index, fill_value=0)
@@ -264,8 +280,12 @@ def calculate_portfolio_metrics(holdings_df, prices):
     }
 
 
-def create_portfolio():
-    """Create new portfolio"""
+def create_portfolio() -> None:
+    """
+    Create new portfolio with user input.
+
+    Prompts for portfolio name, description, and starting cash balance.
+    """
     console.print("\n[bold cyan]═══ CREATE NEW PORTFOLIO ═══[/bold cyan]\n")
 
     name = Prompt.ask("[cyan]Portfolio name[/cyan]", default="Main Portfolio")
@@ -288,8 +308,13 @@ def create_portfolio():
         conn.close()
 
 
-def list_portfolios():
-    """List all portfolios"""
+def list_portfolios() -> Optional[pd.DataFrame]:
+    """
+    Display all portfolios in formatted table.
+
+    Returns:
+        DataFrame containing all portfolios, or None if no portfolios exist
+    """
     conn = sqlite3.connect(DB_PATH)
     df = pd.read_sql_query("SELECT * FROM portfolios", conn)
     conn.close()
@@ -318,8 +343,15 @@ def list_portfolios():
     return df
 
 
-def add_holding(portfolio_id):
-    """Add holding to portfolio"""
+def add_holding(portfolio_id: int) -> None:
+    """
+    Add or update holding in portfolio.
+
+    Args:
+        portfolio_id: Database ID of the portfolio
+
+    Updates average cost if holding already exists.
+    """
     console.print("\n[bold cyan]═══ ADD HOLDING ═══[/bold cyan]\n")
 
     symbol = Prompt.ask("[cyan]Stock symbol[/cyan]").upper()
@@ -332,12 +364,10 @@ def add_holding(portfolio_id):
     cursor = conn.cursor()
 
     try:
-        # Check if holding exists
         cursor.execute('SELECT * FROM holdings WHERE portfolio_id = ? AND symbol = ?', (portfolio_id, symbol))
         existing = cursor.fetchone()
 
         if existing:
-            # Update existing holding (average cost)
             old_qty, old_cost = existing[3], existing[4]
             new_qty = old_qty + quantity
             new_cost = ((old_qty * old_cost) + (quantity * price)) / new_qty
@@ -346,13 +376,11 @@ def add_holding(portfolio_id):
                 UPDATE holdings SET quantity = ?, avg_cost = ? WHERE portfolio_id = ? AND symbol = ?
             ''', (new_qty, new_cost, portfolio_id, symbol))
         else:
-            # Insert new holding
             cursor.execute('''
                 INSERT INTO holdings (portfolio_id, symbol, quantity, avg_cost, purchase_date, notes)
                 VALUES (?, ?, ?, ?, ?, ?)
             ''', (portfolio_id, symbol, quantity, price, date, notes))
 
-        # Record transaction
         cursor.execute('''
             INSERT INTO transactions (portfolio_id, symbol, action, quantity, price, transaction_date, notes)
             VALUES (?, ?, 'BUY', ?, ?, ?, ?)
@@ -367,24 +395,28 @@ def add_holding(portfolio_id):
         conn.close()
 
 
-def view_portfolio(portfolio_id):
-    """View portfolio with professional metrics"""
+def view_portfolio(portfolio_id: int) -> None:
+    """
+    Display portfolio with comprehensive metrics and risk analytics.
+
+    Args:
+        portfolio_id: Database ID of the portfolio
+
+    Shows summary, holdings table, risk metrics, and performance data.
+    """
     conn = sqlite3.connect(DB_PATH)
 
-    # Get portfolio info
     portfolio = pd.read_sql_query("SELECT * FROM portfolios WHERE id = ?", conn, params=(portfolio_id,))
     if portfolio.empty:
         console.print("[red]Portfolio not found![/red]")
         conn.close()
         return
 
-    # Get holdings
     holdings = pd.read_sql_query("SELECT * FROM holdings WHERE portfolio_id = ?", conn, params=(portfolio_id,))
     conn.close()
 
     console.clear()
 
-    # Header
     header_text = Text()
     header_text.append(f" {portfolio['name'].iloc[0]}\n", style="bold cyan")
     header_text.append(f"{portfolio['description'].iloc[0]}", style="bright_black")
@@ -395,16 +427,13 @@ def view_portfolio(portfolio_id):
         console.print("[yellow]No holdings in this portfolio.[/yellow]\n")
         return
 
-    # Fetch prices
     symbols = holdings['symbol'].tolist()
     with console.status("[cyan]Fetching current prices...", spinner="dots"):
         prices = get_current_prices(symbols)
 
-    # Calculate metrics
     metrics = calculate_portfolio_metrics(holdings, prices)
     holdings_df = metrics['holdings_df']
 
-    # Portfolio summary
     summary_table = Table.grid(padding=(0, 3))
     summary_table.add_column(style="bright_black")
     summary_table.add_column(justify="right", style="bold white")
@@ -423,7 +452,6 @@ def view_portfolio(portfolio_id):
     console.print(Panel(summary_table, title="[bold cyan]Portfolio Summary[/bold cyan]", border_style=THEME['border'], box=box.SQUARE, style=THEME['panel_bg']))
     console.print()
 
-    # Holdings table
     holdings_table = Table(title="[bold cyan]Holdings[/bold cyan]", box=box.SQUARE, show_header=True, header_style=f"bold white {THEME['header_bg']}", row_styles=[THEME['row_even'], THEME['row_odd']])
 
     holdings_table.add_column("Symbol", style="bold cyan")
@@ -457,7 +485,6 @@ def view_portfolio(portfolio_id):
     console.print(holdings_table)
     console.print()
 
-    # Risk metrics
     risk_table = Table.grid(padding=(0, 3))
     risk_table.add_column(style="bright_black")
     risk_table.add_column(justify="right", style="bold white")
@@ -472,19 +499,18 @@ def view_portfolio(portfolio_id):
     console.print(Panel(risk_table, title="[bold cyan]Risk Analytics[/bold cyan]", border_style=THEME['border'], box=box.SQUARE, style=THEME['panel_bg']))
     console.print()
 
-    # Sector allocation (if available)
-    # Performance vs benchmarks (future enhancement)
-
     console.print(f"[bright_black]Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | {len(holdings_df)} holdings | Risk-adjusted return (Sharpe): {metrics['sharpe']:.2f}[/bright_black]\n")
 
 
-def portfolio_menu():
-    """Main portfolio management menu"""
+def portfolio_menu() -> None:
+    """
+    Main portfolio management menu loop.
+
+    Provides options for viewing, creating, and managing portfolios.
+    """
     while True:
         console.clear()
 
-        # Premium header with green color scheme
-        from datetime import datetime
         now = datetime.now()
 
         header = Text()
