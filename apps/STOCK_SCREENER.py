@@ -7,6 +7,8 @@ Screens by: Growth, Value, Momentum, Quality, Dividend
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import sys
+import os
 from datetime import datetime
 from typing import List, Dict, Optional, Any
 from rich.console import Console
@@ -16,6 +18,15 @@ from rich import box
 from rich.progress import track
 import warnings
 warnings.filterwarnings('ignore')
+
+# Add src to path for imports
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from src.technical_indicators import get_technical_summary, calculate_momentum_score
+from src.quality_scores import calculate_piotroski_score, calculate_altman_z_score
+from src.ui_enhancements import (
+    create_enhanced_sparkline, create_progress_bar, get_recommendation_indicator,
+    format_percentage, create_score_badge
+)
 
 console = Console()
 
@@ -156,11 +167,41 @@ def fetch_stock_metrics(symbol: str) -> Optional[Dict[str, Any]]:
         rs = gain / loss
         rsi = (100 - (100 / (1 + rs))).iloc[-1] if len(rs) > 0 else 50
 
+        # Get 30-day price history for enhanced sparkline
+        price_history_30d = df['Close'].tail(30).tolist()
+
+        # Calculate technical indicators
+        technical = get_technical_summary(df['Close'], df['Volume'])
+
+        # Calculate quality scores
+        fundamentals = {
+            'returnOnAssets': info.get('returnOnAssets', 0),
+            'returnOnEquity': info.get('returnOnEquity', 0),
+            'profitMargins': info.get('profitMargins', 0),
+            'operatingCashflow': info.get('operatingCashflow', 0),
+            'netIncome': info.get('netIncome', 0),
+            'debtToEquity': info.get('debtToEquity', 0),
+            'currentRatio': info.get('currentRatio', 0),
+            'marketCap': info.get('marketCap', 0),
+            'grossMargins': info.get('grossMargins', 0),
+            'totalRevenue': info.get('totalRevenue', 0),
+            'totalAssets': info.get('totalAssets', 0),
+            'totalCurrentAssets': info.get('totalCurrentAssets', 0),
+            'totalCurrentLiabilities': info.get('totalCurrentLiabilities', 0),
+            'retainedEarnings': info.get('retainedEarnings', 0),
+            'ebit': info.get('ebit', 0),
+            'totalLiab': info.get('totalLiab', 0)
+        }
+
+        piotroski = calculate_piotroski_score(fundamentals)
+        altman = calculate_altman_z_score(fundamentals)
+
         return {
             'symbol': symbol,
             'name': info.get('longName', symbol),
             'price': current_price,
             'price_history': df['Close'].tail(7).tolist(),
+            'price_history_30d': price_history_30d,
             'returns_1m': returns_1m,
             'returns_3m': returns_3m,
             'returns_1y': returns_1y,
@@ -183,6 +224,14 @@ def fetch_stock_metrics(symbol: str) -> Optional[Dict[str, Any]]:
             'upside': ((info.get('targetMeanPrice', current_price) - current_price) / current_price * 100),
             'recommendation': info.get('recommendationKey', 'N/A').upper(),
             'num_analysts': info.get('numberOfAnalystOpinions', 0),
+            # New enhancements
+            'momentum_score': technical.get('momentum_score', 0),
+            'piotroski_score': piotroski['score'],
+            'piotroski_rating': piotroski['rating'],
+            'altman_score': altman.get('score'),
+            'altman_rating': altman.get('rating', 'N/A'),
+            'macd_signal': technical['macd']['trend'],
+            'bollinger_signal': technical['bollinger']['signal'],
         }
     except Exception as e:
         return None
@@ -513,34 +562,49 @@ def create_results_table(stocks: List[Dict[str, Any]], preset: str) -> Table:
         padding=(0, 1)
     )
 
-    table.add_column("#", justify="right", style="bright_black", width=4)
-    table.add_column("Symbol", style="bold cyan", width=8)
-    table.add_column("Name", style="white", width=18)
-    table.add_column("Price", justify="right", width=9)
-    table.add_column("Trend", justify="center", width=10)
-    table.add_column("1Y Ret", justify="right", width=9)
-    table.add_column("P/E", justify="right", width=6)
-    table.add_column("ROE", justify="right", width=7)
-    table.add_column("Margin", justify="right", width=7)
-    table.add_column("Sharpe", justify="right", width=7)
-    table.add_column("Score", justify="right", style="bold green", width=8)
+    table.add_column("#", justify="right", style="bright_black", width=3)
+    table.add_column("Symbol", style="bold cyan", width=7)
+    table.add_column("Price", justify="right", width=8)
+    table.add_column("30-Day Trend", justify="center", width=20)
+    table.add_column("Quality", justify="center", width=9)
+    table.add_column("Signal", justify="center", width=12)
+    table.add_column("Score", justify="center", width=14)
+    table.add_column("Rating", justify="center", width=12)
 
     for i, stock in enumerate(stocks[:10], 1):
-        ret_color = 'green' if stock['returns_1y'] > 0 else 'red'
-        sparkline = create_sparkline(stock.get('price_history', []))
+        # Enhanced 30-day sparkline
+        sparkline = create_enhanced_sparkline(stock.get('price_history_30d', []), width=15, show_trend=False)
+
+        # Progress bar for score
+        score_bar = create_progress_bar(stock['score'], 100, width=8)
+
+        # Quality indicator (Piotroski)
+        piotroski = stock.get('piotroski_score', 0)
+        quality_color = "green" if piotroski >= 7 else "yellow" if piotroski >= 5 else "red"
+        quality = f"[{quality_color}]{piotroski}/9[/{quality_color}]"
+
+        # Trading signal
+        signal = get_recommendation_indicator(stock['score'], "score")
+
+        # Overall rating with emoji
+        if stock['score'] >= 75:
+            rating = "🟢 STRONG"
+        elif stock['score'] >= 60:
+            rating = "🟢 GOOD"
+        elif stock['score'] >= 45:
+            rating = "🟡 FAIR"
+        else:
+            rating = "🔴 WEAK"
 
         table.add_row(
             str(i),
             stock['symbol'],
-            stock['name'][:25],
             f"${stock['price']:.2f}",
             sparkline,
-            f"[{ret_color}]{stock['returns_1y']:+.1f}%[/{ret_color}]",
-            f"{stock['pe']:.1f}" if stock['pe'] > 0 else "N/A",
-            f"{stock['roe']:.1f}%" if stock['roe'] > 0 else "N/A",
-            f"{stock['profit_margin']:.1f}%",
-            f"{stock['sharpe']:.2f}",
-            f"[bold green]{stock['score']}/100[/bold green]"
+            quality,
+            signal,
+            score_bar,
+            rating
         )
 
     return table
