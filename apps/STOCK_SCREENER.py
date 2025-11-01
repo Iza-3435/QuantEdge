@@ -8,6 +8,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 from datetime import datetime
+from typing import List, Dict, Optional, Any
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -34,8 +35,17 @@ THEME = {
 }
 
 
-def create_sparkline(prices, width=7):
-    """Create sparkline from price data"""
+def create_sparkline(prices: List[float], width: int = 7) -> str:
+    """
+    Create ASCII sparkline chart from price data.
+
+    Args:
+        prices: List of price values
+        width: Number of bars to display
+
+    Returns:
+        Formatted sparkline string with color
+    """
     if not prices or len(prices) < 2:
         return "━━━━━"
 
@@ -111,8 +121,16 @@ SCREENING_PRESETS = {
 }
 
 
-def fetch_stock_metrics(symbol):
-    """Fetch comprehensive stock metrics"""
+def fetch_stock_metrics(symbol: str) -> Optional[Dict[str, Any]]:
+    """
+    Fetch comprehensive stock metrics including fundamentals and technicals.
+
+    Args:
+        symbol: Stock ticker symbol
+
+    Returns:
+        Dictionary containing stock metrics, or None if fetch fails
+    """
     try:
         ticker = yf.Ticker(symbol)
         df = ticker.history(period='1y')
@@ -123,18 +141,15 @@ def fetch_stock_metrics(symbol):
 
         current_price = df['Close'].iloc[-1]
 
-        # Returns
         returns_1m = ((current_price - df['Close'].iloc[-21]) / df['Close'].iloc[-21] * 100) if len(df) >= 21 else 0
         returns_3m = ((current_price - df['Close'].iloc[-63]) / df['Close'].iloc[-63] * 100) if len(df) >= 63 else 0
         returns_1y = ((current_price - df['Close'].iloc[0]) / df['Close'].iloc[0] * 100)
 
-        # Volatility & Sharpe
         returns = df['Close'].pct_change()
         volatility = returns.std() * np.sqrt(252) * 100
         excess_returns = returns - (0.03 / 252)
         sharpe = np.sqrt(252) * excess_returns.mean() / returns.std() if returns.std() > 0 else 0
 
-        # RSI
         delta = df['Close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
@@ -173,8 +188,17 @@ def fetch_stock_metrics(symbol):
         return None
 
 
-def apply_screening_criteria(stocks, criteria):
-    """Filter stocks based on criteria"""
+def apply_screening_criteria(stocks: List[Dict[str, Any]], criteria: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Filter stocks based on screening criteria.
+
+    Args:
+        stocks: List of stock data dictionaries
+        criteria: Dictionary of screening criteria (e.g., pe_max, returns_1y_min)
+
+    Returns:
+        List of stocks that pass all criteria
+    """
     filtered = []
 
     for stock in stocks:
@@ -190,7 +214,7 @@ def apply_screening_criteria(stocks, criteria):
             elif key.endswith('_max'):
                 metric = key.replace('_max', '')
                 stock_value = stock.get(metric, 0)
-                if stock_value == 0:  # Handle N/A
+                if stock_value == 0:
                     continue
                 if stock_value > value:
                     passes = False
@@ -207,8 +231,17 @@ def apply_screening_criteria(stocks, criteria):
     return filtered
 
 
-def calculate_score(stock, preset_name):
-    """Calculate composite score for ranking"""
+def calculate_score(stock: Dict[str, Any], preset_name: str) -> int:
+    """
+    Calculate composite score for ranking stocks.
+
+    Args:
+        stock: Dictionary containing stock metrics
+        preset_name: Name of screening preset (value, growth, dividend, quality, momentum, undervalued)
+
+    Returns:
+        Score from 0-100 based on preset criteria
+    """
     score = 0
 
     if preset_name == 'value':
@@ -371,8 +404,16 @@ def calculate_score(stock, preset_name):
     return score
 
 
-def screen_stocks(universe='mega_cap', preset='value'):
-    """Screen stocks"""
+def screen_stocks(universe: str = 'mega_cap', preset: str = 'value') -> None:
+    """
+    Screen stocks from universe using preset criteria.
+
+    Args:
+        universe: Stock universe to screen (mega_cap, tech, faang, dividend, growth)
+        preset: Screening preset to apply (value, growth, dividend, quality, momentum, undervalued)
+
+    Displays results table and top picks.
+    """
     console.print()
     console.print(Panel(f"[bold cyan]Stock Screener: {SCREENING_PRESETS[preset]['name']}[/bold cyan]\n[bright_black]Universe: {universe.upper()} ({len(STOCK_UNIVERSES[universe])} stocks)[/bright_black]", border_style=THEME['border'], box=box.SIMPLE_HEAVY))
     console.print()
@@ -427,8 +468,16 @@ def screen_stocks(universe='mega_cap', preset='value'):
     console.print(f"[bright_black]Screened {len(stocks_data)} stocks │ {passed_count} passed strict criteria │ Showing top {len(display_stocks)} │ Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/bright_black]", justify="center")
 
 
-def create_criteria_text(criteria):
-    """Create criteria display"""
+def create_criteria_text(criteria: Dict[str, Any]) -> str:
+    """
+    Format screening criteria for display.
+
+    Args:
+        criteria: Dictionary of screening criteria
+
+    Returns:
+        Formatted criteria string
+    """
     lines = []
     for key, value in criteria.items():
         if key.endswith('_min'):
@@ -443,8 +492,17 @@ def create_criteria_text(criteria):
     return "\n".join(lines)
 
 
-def create_results_table(stocks, preset):
-    """Create results table"""
+def create_results_table(stocks: List[Dict[str, Any]], preset: str) -> Table:
+    """
+    Create formatted results table for screened stocks.
+
+    Args:
+        stocks: List of stock data dictionaries
+        preset: Name of screening preset
+
+    Returns:
+        Rich Table object with formatted results
+    """
     table = Table(
         title=f"TOP STOCK PICKS ({preset.title()})",
         box=box.SIMPLE_HEAVY,
@@ -488,8 +546,16 @@ def create_results_table(stocks, preset):
     return table
 
 
-def create_top_picks_panel(stocks):
-    """Create top 3 picks panel"""
+def create_top_picks_panel(stocks: List[Dict[str, Any]]) -> Panel:
+    """
+    Create panel displaying top 3 stock picks.
+
+    Args:
+        stocks: List of top-ranked stocks
+
+    Returns:
+        Rich Panel object with formatted top picks
+    """
     text = "[bold yellow] TOP 3 PICKS[/bold yellow]\n\n"
 
     for i, stock in enumerate(stocks, 1):
