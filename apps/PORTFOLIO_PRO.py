@@ -17,6 +17,8 @@ import sqlite3
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import sys
+import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Tuple
 from rich.console import Console
@@ -28,6 +30,13 @@ from rich.text import Text
 from rich.prompt import Prompt, Confirm, IntPrompt, FloatPrompt
 import warnings
 warnings.filterwarnings('ignore')
+
+# Add src to path for imports
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from src.ui_enhancements import (
+    create_enhanced_sparkline, create_progress_bar, get_performance_color,
+    format_percentage, create_score_badge
+)
 
 console = Console()
 
@@ -454,21 +463,27 @@ def view_portfolio(portfolio_id: int) -> None:
 
     holdings_table = Table(title="[bold cyan]Holdings[/bold cyan]", box=box.SQUARE, show_header=True, header_style=f"bold white {THEME['header_bg']}", row_styles=[THEME['row_even'], THEME['row_odd']])
 
-    holdings_table.add_column("Symbol", style="bold cyan")
-    holdings_table.add_column("Quantity", justify="right")
-    holdings_table.add_column("Avg Cost", justify="right")
-    holdings_table.add_column("Current", justify="right")
-    holdings_table.add_column("Market Value", justify="right")
-    holdings_table.add_column("P&L", justify="right")
-    holdings_table.add_column("P&L %", justify="right")
-    holdings_table.add_column("Weight", justify="right")
-    holdings_table.add_column("Trend", justify="center", width=10)
+    holdings_table.add_column("Symbol", style="bold cyan", width=8)
+    holdings_table.add_column("Quantity", justify="right", width=10)
+    holdings_table.add_column("Avg Cost", justify="right", width=10)
+    holdings_table.add_column("Current", justify="right", width=10)
+    holdings_table.add_column("Market Value", justify="right", width=12)
+    holdings_table.add_column("P&L", justify="right", width=12)
+    holdings_table.add_column("P&L %", justify="right", width=12)
+    holdings_table.add_column("Weight", justify="right", width=8)
+    holdings_table.add_column("30-Day Trend", justify="center", width=18)
 
     price_hist = metrics.get('price_history', {})
 
     for _, row in holdings_df.iterrows():
-        pnl_color = "green" if row['pnl'] >= 0 else "red"
-        sparkline = create_sparkline(price_hist.get(row['symbol'], []))
+        pnl_color = get_performance_color(row['pnl_pct'])
+
+        # Enhanced 30-day sparkline
+        prices_30d = price_hist.get(row['symbol'], [])
+        sparkline = create_enhanced_sparkline(prices_30d, width=12, show_trend=False)
+
+        # Formatted P&L percentage with color gradient
+        pnl_pct_formatted = format_percentage(row['pnl_pct'], decimals=2, colored=True)
 
         holdings_table.add_row(
             row['symbol'],
@@ -477,7 +492,7 @@ def view_portfolio(portfolio_id: int) -> None:
             f"${row['current_price']:.2f}",
             f"${row['market_value']:,.2f}",
             f"[{pnl_color}]${row['pnl']:,.2f}[/{pnl_color}]",
-            f"[{pnl_color}]{row['pnl_pct']:+.2f}%[/{pnl_color}]",
+            pnl_pct_formatted,
             f"{row['weight']:.1f}%",
             sparkline
         )

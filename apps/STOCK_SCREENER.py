@@ -586,15 +586,15 @@ def create_results_table(stocks: List[Dict[str, Any]], preset: str) -> Table:
         # Trading signal
         signal = get_recommendation_indicator(stock['score'], "score")
 
-        # Overall rating with emoji
+        # Overall rating (no emojis)
         if stock['score'] >= 75:
-            rating = "🟢 STRONG"
+            rating = "[bright_green]STRONG[/bright_green]"
         elif stock['score'] >= 60:
-            rating = "🟢 GOOD"
+            rating = "[green]GOOD[/green]"
         elif stock['score'] >= 45:
-            rating = "🟡 FAIR"
+            rating = "[yellow]FAIR[/yellow]"
         else:
-            rating = "🔴 WEAK"
+            rating = "[red]WEAK[/red]"
 
         table.add_row(
             str(i),
@@ -623,8 +623,8 @@ def create_top_picks_panel(stocks: List[Dict[str, Any]]) -> Panel:
     text = "[bold yellow] TOP 3 PICKS[/bold yellow]\n\n"
 
     for i, stock in enumerate(stocks, 1):
-        medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉"
-        text += f"{medal} [bold cyan]{stock['symbol']}[/bold cyan] - {stock['name'][:30]}\n"
+        rank_color = "bright_green" if i == 1 else "green" if i == 2 else "yellow"
+        text += f"[{rank_color}]#{i}[/{rank_color}] [bold cyan]{stock['symbol']}[/bold cyan] - {stock['name'][:30]}\n"
         text += f"   Score: [bold green]{stock['score']}/100[/bold green] │ "
         text += f"Price: ${stock['price']:.2f} │ "
         text += f"1Y: [{('green' if stock['returns_1y'] > 0 else 'red')}]{stock['returns_1y']:+.1f}%[/] │ "

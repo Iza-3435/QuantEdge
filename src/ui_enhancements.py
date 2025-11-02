@@ -134,7 +134,7 @@ def create_enhanced_sparkline(prices: List[float], width: int = 30,
 
 def get_recommendation_indicator(score: float, metric_type: str = "score") -> str:
     """
-    Get status indicator with emoji and color.
+    Get status indicator with color (no emojis).
 
     Args:
         score: Numeric score
@@ -146,52 +146,52 @@ def get_recommendation_indicator(score: float, metric_type: str = "score") -> st
     if metric_type == "score":
         # Score out of 100
         if score >= 80:
-            return "🟢 STRONG BUY"
+            return "[bright_green]STRONG BUY[/bright_green]"
         elif score >= 65:
-            return "🟢 BUY"
+            return "[green]BUY[/green]"
         elif score >= 50:
-            return "🟡 HOLD"
+            return "[yellow]HOLD[/yellow]"
         elif score >= 35:
-            return "🟠 SELL"
+            return "[orange1]SELL[/orange1]"
         else:
-            return "🔴 STRONG SELL"
+            return "[red]STRONG SELL[/red]"
 
     elif metric_type == "rsi":
         # RSI (0-100)
         if score > 70:
-            return "🔴 OVERBOUGHT"
+            return "[red]OVERBOUGHT[/red]"
         elif score > 60:
-            return "🟠 STRONG"
+            return "[orange1]STRONG[/orange1]"
         elif score > 40:
-            return "🟢 NEUTRAL"
+            return "[green]NEUTRAL[/green]"
         elif score > 30:
-            return "🟡 WEAK"
+            return "[yellow]WEAK[/yellow]"
         else:
-            return "🟢 OVERSOLD"
+            return "[green]OVERSOLD[/green]"
 
     elif metric_type == "momentum":
         # Momentum score
         if score >= 75:
-            return "🟢 STRONG"
+            return "[green]STRONG[/green]"
         elif score >= 50:
-            return "🟡 MODERATE"
+            return "[yellow]MODERATE[/yellow]"
         else:
-            return "🔴 WEAK"
+            return "[red]WEAK[/red]"
 
     elif metric_type == "quality":
         # Quality score
         if score >= 80:
-            return "🟢 EXCELLENT"
+            return "[bright_green]EXCELLENT[/bright_green]"
         elif score >= 65:
-            return "🟢 STRONG"
+            return "[green]STRONG[/green]"
         elif score >= 50:
-            return "🟡 GOOD"
+            return "[yellow]GOOD[/yellow]"
         elif score >= 35:
-            return "🟠 FAIR"
+            return "[orange1]FAIR[/orange1]"
         else:
-            return "🔴 WEAK"
+            return "[red]WEAK[/red]"
 
-    return "⚪ N/A"
+    return "[bright_black]N/A[/bright_black]"
 
 
 def create_metric_heatmap_row(values: List[float], labels: List[str],
