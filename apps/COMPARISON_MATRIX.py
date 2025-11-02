@@ -22,11 +22,13 @@ import sys
 import warnings
 from pathlib import Path
 import concurrent.futures
+from typing import Dict, List, Optional, Tuple, Any
 warnings.filterwarnings('ignore')
 
-# Add utils to path for caching
+# Add paths for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils.data_cache import DataCache, fetch_parallel
+from src.ui_enhancements import create_enhanced_sparkline, get_performance_color
 
 console = Console()
 
@@ -46,8 +48,17 @@ THEME = {
 }
 
 
-def create_sparkline(prices, width=10):
-    """Create ASCII sparkline from price list"""
+def create_sparkline(prices: List[float], width: int = 10) -> str:
+    """
+    Create enhanced 30-day ASCII sparkline from price list.
+
+    Args:
+        prices: List of price values
+        width: Number of characters for sparkline display
+
+    Returns:
+        Formatted sparkline string with color coding
+    """
     if not prices or len(prices) < 2:
         return "━━━━━━━━━━"
 
@@ -56,22 +67,20 @@ def create_sparkline(prices, width=10):
     if len(prices) < 2:
         return "━━━━━━━━━━"
 
-    min_p, max_p = min(prices), max(prices)
-    range_p = max_p - min_p if max_p != min_p else 1
-
-    chars = '▁▂▃▄▅▆▇█'
-    sparkline = ''
-    for price in prices[-width:]:  # Last 'width' data points
-        index = int(((price - min_p) / range_p) * 7)
-        sparkline += chars[min(index, 7)]
-
-    # Color code: green if trending up, red if down
-    color = 'green' if prices[-1] > prices[0] else 'red' if prices[-1] < prices[0] else 'white'
-    return f"[{color}]{sparkline}[/{color}]"
+    # Use enhanced sparkline from ui_enhancements
+    return create_enhanced_sparkline(prices, width=width, show_trend=False)
 
 
-def fetch_single_comparison(symbol):
-    """Fetch data for a single symbol (for parallel execution)"""
+def fetch_single_comparison(symbol: str) -> Tuple[str, Optional[Dict[str, Any]]]:
+    """
+    Fetch comparison data for a single symbol (parallel execution).
+
+    Args:
+        symbol: Stock ticker symbol
+
+    Returns:
+        Tuple of (symbol, data_dict) or (symbol, None) if fetch fails
+    """
     # Check cache first
     cache_key = f"comparison_{symbol}"
     cached = DataCache.get(cache_key)
@@ -148,9 +157,17 @@ def fetch_single_comparison(symbol):
         return symbol, None
 
 
-def fetch_comparison_data(symbols):
-    """Fetch data for all symbols IN PARALLEL"""
-    data = {}
+def fetch_comparison_data(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
+    """
+    Fetch comparison data for all symbols in parallel.
+
+    Args:
+        symbols: List of stock ticker symbols
+
+    Returns:
+        Dictionary mapping symbols to their comparison data
+    """
+    data: Dict[str, Dict[str, Any]] = {}
 
     # Use parallel fetching
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(symbols)) as executor:
@@ -171,9 +188,17 @@ def fetch_comparison_data(symbols):
     return data
 
 
-def fetch_comparison_data_OLD_SLOW(symbols):
-    """OLD SERIAL VERSION - KEPT FOR REFERENCE"""
-    data = {}
+def fetch_comparison_data_OLD_SLOW(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
+    """
+    OLD SERIAL VERSION - KEPT FOR REFERENCE.
+
+    Args:
+        symbols: List of stock ticker symbols
+
+    Returns:
+        Dictionary mapping symbols to their comparison data
+    """
+    data: Dict[str, Dict[str, Any]] = {}
 
     for symbol in symbols:
         try:
@@ -239,8 +264,17 @@ def fetch_comparison_data_OLD_SLOW(symbols):
     return data
 
 
-def get_best_worst(values, higher_is_better=True):
-    """Get best and worst values"""
+def get_best_worst(values: Dict[str, float], higher_is_better: bool = True) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Identify best and worst performers from values.
+
+    Args:
+        values: Dictionary mapping symbols to their metric values
+        higher_is_better: If True, higher values are better; if False, lower values are better
+
+    Returns:
+        Tuple of (best_symbol, worst_symbol) or (None, None) if no valid values
+    """
     valid_values = [(k, v) for k, v in values.items() if v is not None and v != 0]
 
     if not valid_values:
@@ -256,8 +290,26 @@ def get_best_worst(values, higher_is_better=True):
     return best[0], worst[0]
 
 
-def create_comparison_table(data, metric_name, key, higher_is_better=True, format_type='number'):
-    """Create comparison table for a metric"""
+def create_comparison_table(
+    data: Dict[str, Dict[str, Any]],
+    metric_name: str,
+    key: str,
+    higher_is_better: bool = True,
+    format_type: str = 'number'
+) -> Optional[Table]:
+    """
+    Create comparison table for a single metric across stocks.
+
+    Args:
+        data: Dictionary of stock data
+        metric_name: Display name for the metric
+        key: Data key to extract from stock data
+        higher_is_better: Whether higher values are better
+        format_type: Format type (number, percent, currency, billions)
+
+    Returns:
+        Rich Table object or None if no data
+    """
     if not data:
         return None
 
@@ -293,10 +345,10 @@ def create_comparison_table(data, metric_name, key, higher_is_better=True, forma
         else:
             value_str = f"{value:.2f}" if value != 0 else "N/A"
 
-        # Color and rating
+        # Color and rating (professional, no emojis)
         if symbol == best_symbol:
             style = "bold bright_green"
-            rating = "✓ BEST"
+            rating = "BEST"
         elif symbol == worst_symbol:
             style = "dim"
             rating = "WORST"
@@ -309,8 +361,16 @@ def create_comparison_table(data, metric_name, key, higher_is_better=True, forma
     return table
 
 
-def create_summary_table(data):
-    """Create comprehensive summary table"""
+def create_summary_table(data: Dict[str, Dict[str, Any]]) -> Optional[Table]:
+    """
+    Create comprehensive summary comparison table across all metrics.
+
+    Args:
+        data: Dictionary of stock data for all symbols
+
+    Returns:
+        Rich Table object with complete comparison matrix or None if no data
+    """
     if not data:
         return None
 
@@ -413,8 +473,16 @@ def create_summary_table(data):
     return table
 
 
-def create_header(symbols):
-    """Create header"""
+def create_header(symbols: List[str]) -> Panel:
+    """
+    Create header panel for comparison matrix.
+
+    Args:
+        symbols: List of stock symbols being compared
+
+    Returns:
+        Rich Panel with header information
+    """
     header = Text()
     header.append("COMPARISON MATRIX\n\n", style="bold white")
     header.append(f"Comparing {len(symbols)} stocks", style="white")
@@ -426,16 +494,24 @@ def create_header(symbols):
     return Panel(header, box=box.SQUARE, border_style=THEME['border'], padding=(1, 2), style=THEME['panel_bg'])
 
 
-def create_winner_panel(data):
-    """Create overall winner panel"""
+def create_winner_panel(data: Dict[str, Dict[str, Any]]) -> Optional[Panel]:
+    """
+    Create overall winner panel with scoring analysis.
+
+    Args:
+        data: Dictionary of stock data for all symbols
+
+    Returns:
+        Rich Panel showing overall winner and reasons or None if insufficient data
+    """
     if not data or len(data) < 2:
         return None
 
     # Score each stock
-    scores = {symbol: 0 for symbol in data.keys()}
+    scores: Dict[str, int] = {symbol: 0 for symbol in data.keys()}
 
     # Metrics to score (metric, higher_is_better, weight)
-    scoring_metrics = [
+    scoring_metrics: List[Tuple[str, bool, int]] = [
         ('revenue_growth', True, 2),
         ('earnings_growth', True, 2),
         ('profit_margin', True, 2),
@@ -496,8 +572,13 @@ def create_winner_panel(data):
     )
 
 
-def display_comparison_matrix(symbols):
-    """Display comparison matrix"""
+def display_comparison_matrix(symbols: List[str]) -> None:
+    """
+    Display comparison matrix for multiple stocks.
+
+    Args:
+        symbols: List of stock ticker symbols to compare
+    """
     console.clear()
     console.print(create_header(symbols))
     console.print()
@@ -532,13 +613,18 @@ def display_comparison_matrix(symbols):
     footer = Panel(
         "[bright_black]Comparison Matrix • Green = Best in category • Higher scores = Better investment[/bright_black]",
         box=box.SQUARE,
-        border_style=THEME['border']
-    , style=THEME['panel_bg'])
+        border_style=THEME['border'],
+        style=THEME['panel_bg']
+    )
     console.print(footer)
 
 
-def main():
-    """Main function"""
+def main() -> None:
+    """
+    Main entry point for comparison matrix application.
+
+    Parses command-line arguments and displays stock comparison matrix.
+    """
     if len(sys.argv) < 3:
         console.print("\n[yellow]Usage:[/yellow] python COMPARISON_MATRIX.py <SYMBOL1> <SYMBOL2> [SYMBOL3] ...")
         console.print("\n[cyan]Example:[/cyan] python COMPARISON_MATRIX.py AAPL MSFT GOOGL NVDA META")
