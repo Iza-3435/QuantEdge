@@ -25,7 +25,6 @@ import concurrent.futures
 from typing import Dict, List, Optional, Tuple, Any
 warnings.filterwarnings('ignore')
 
-# Add paths for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils.data_cache import DataCache, fetch_parallel
 from src.ui_enhancements import create_enhanced_sparkline, get_performance_color
@@ -49,38 +48,18 @@ THEME = {
 
 
 def create_sparkline(prices: List[float], width: int = 10) -> str:
-    """
-    Create enhanced 30-day ASCII sparkline from price list.
-
-    Args:
-        prices: List of price values
-        width: Number of characters for sparkline display
-
-    Returns:
-        Formatted sparkline string with color coding
-    """
     if not prices or len(prices) < 2:
         return "━━━━━━━━━━"
 
-    # Remove any NaN values
     prices = [p for p in prices if not pd.isna(p)]
     if len(prices) < 2:
         return "━━━━━━━━━━"
 
-    # Use enhanced sparkline from ui_enhancements
     return create_enhanced_sparkline(prices, width=width, show_trend=False)
 
 
 def fetch_single_comparison(symbol: str) -> Tuple[str, Optional[Dict[str, Any]]]:
-    """
-    Fetch comparison data for a single symbol (parallel execution).
-
-    Args:
-        symbol: Stock ticker symbol
-
-    Returns:
-        Tuple of (symbol, data_dict) or (symbol, None) if fetch fails
-    """
+    """Fetch comparison data for a single stock symbol"""
     # Check cache first
     cache_key = f"comparison_{symbol}"
     cached = DataCache.get(cache_key)
@@ -98,11 +77,9 @@ def fetch_single_comparison(symbol: str) -> Tuple[str, Optional[Dict[str, Any]]]
         current_price = hist['Close'].iloc[-1]
         returns_1y = ((current_price - hist['Close'].iloc[0]) / hist['Close'].iloc[0] * 100)
 
-        # Calculate other metrics
         returns = hist['Close'].pct_change().dropna()
         volatility = returns.std() * np.sqrt(252) * 100
 
-        # RSI
         delta = hist['Close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
@@ -110,7 +87,6 @@ def fetch_single_comparison(symbol: str) -> Tuple[str, Optional[Dict[str, Any]]]
         rsi = 100 - (100 / (1 + rs))
         rsi_current = rsi.iloc[-1] if not rsi.empty else 50
 
-        # Sparkline
         sparkline_prices = hist['Close'].tail(30).tolist()
 
         result = {
@@ -149,7 +125,6 @@ def fetch_single_comparison(symbol: str) -> Tuple[str, Optional[Dict[str, Any]]]
             'sparkline_prices': sparkline_prices,
         }
 
-        # Cache result
         DataCache.set(cache_key, result)
         return symbol, result
 
@@ -158,18 +133,9 @@ def fetch_single_comparison(symbol: str) -> Tuple[str, Optional[Dict[str, Any]]]
 
 
 def fetch_comparison_data(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
-    """
-    Fetch comparison data for all symbols in parallel.
-
-    Args:
-        symbols: List of stock ticker symbols
-
-    Returns:
-        Dictionary mapping symbols to their comparison data
-    """
+    """Fetch comparison data for multiple stocks in parallel"""
     data: Dict[str, Dict[str, Any]] = {}
 
-    # Use parallel fetching
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(symbols)) as executor:
         future_to_symbol = {
             executor.submit(fetch_single_comparison, symbol): symbol
@@ -183,21 +149,13 @@ def fetch_comparison_data(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
                 if result:
                     data[sym] = result
             except Exception:
-                continue
+                pass
 
     return data
 
 
 def fetch_comparison_data_OLD_SLOW(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
-    """
-    OLD SERIAL VERSION - KEPT FOR REFERENCE.
-
-    Args:
-        symbols: List of stock ticker symbols
-
-    Returns:
-        Dictionary mapping symbols to their comparison data
-    """
+    """Old serial version kept for reference"""
     data: Dict[str, Dict[str, Any]] = {}
 
     for symbol in symbols:
@@ -212,11 +170,9 @@ def fetch_comparison_data_OLD_SLOW(symbols: List[str]) -> Dict[str, Dict[str, An
             current_price = hist['Close'].iloc[-1]
             returns_1y = ((current_price - hist['Close'].iloc[0]) / hist['Close'].iloc[0] * 100)
 
-            # Get last 30 days for sparkline
             sparkline_prices = hist['Close'].iloc[-30:].tolist() if len(hist) >= 30 else hist['Close'].tolist()
 
             data[symbol] = {
-                # Price & Valuation
                 'price': current_price,
                 'sparkline_prices': sparkline_prices,
                 'pe': info.get('trailingPE', 0),
@@ -225,35 +181,23 @@ def fetch_comparison_data_OLD_SLOW(symbols: List[str]) -> Dict[str, Dict[str, An
                 'pb': info.get('priceToBook', 0),
                 'ps': info.get('priceToSalesTrailing12Months', 0),
                 'market_cap': info.get('marketCap', 0),
-
-                # Growth & Profitability
                 'revenue_growth': info.get('revenueGrowth', 0) * 100,
                 'earnings_growth': info.get('earningsGrowth', 0) * 100,
                 'profit_margin': info.get('profitMargins', 0) * 100,
                 'roe': info.get('returnOnEquity', 0) * 100,
-
-                # Cash Flow & Financial Health
                 'free_cash_flow': info.get('freeCashflow', 0),
                 'operating_cash_flow': info.get('operatingCashflow', 0),
                 'current_ratio': info.get('currentRatio', 0),
                 'debt_equity': info.get('debtToEquity', 0),
-
-                # Dividend
                 'dividend_yield': info.get('dividendYield', 0) * 100 if info.get('dividendYield') else 0,
-
-                # Ownership & Sentiment
                 'insider_ownership': info.get('heldPercentInsiders', 0) * 100 if info.get('heldPercentInsiders') else 0,
                 'institutional_ownership': info.get('heldPercentInstitutions', 0) * 100 if info.get('heldPercentInstitutions') else 0,
                 'short_interest': info.get('shortPercentOfFloat', 0) * 100 if info.get('shortPercentOfFloat') else 0,
-
-                # Performance & Targets
                 'returns_1y': returns_1y,
                 'target_low': info.get('targetLowPrice', 0),
                 'target_mean': info.get('targetMeanPrice', 0),
                 'target_high': info.get('targetHighPrice', 0),
                 'recommendation': info.get('recommendationKey', 'N/A').upper(),
-
-                # Volume
                 'avg_volume': info.get('averageVolume', 0),
             }
 
@@ -265,16 +209,7 @@ def fetch_comparison_data_OLD_SLOW(symbols: List[str]) -> Dict[str, Dict[str, An
 
 
 def get_best_worst(values: Dict[str, float], higher_is_better: bool = True) -> Tuple[Optional[str], Optional[str]]:
-    """
-    Identify best and worst performers from values.
-
-    Args:
-        values: Dictionary mapping symbols to their metric values
-        higher_is_better: If True, higher values are better; if False, lower values are better
-
-    Returns:
-        Tuple of (best_symbol, worst_symbol) or (None, None) if no valid values
-    """
+    """Identify best and worst performers from metric values"""
     valid_values = [(k, v) for k, v in values.items() if v is not None and v != 0]
 
     if not valid_values:
@@ -297,29 +232,14 @@ def create_comparison_table(
     higher_is_better: bool = True,
     format_type: str = 'number'
 ) -> Optional[Table]:
-    """
-    Create comparison table for a single metric across stocks.
-
-    Args:
-        data: Dictionary of stock data
-        metric_name: Display name for the metric
-        key: Data key to extract from stock data
-        higher_is_better: Whether higher values are better
-        format_type: Format type (number, percent, currency, billions)
-
-    Returns:
-        Rich Table object or None if no data
-    """
+    """Create comparison table for a single metric across stocks"""
     if not data:
         return None
 
-    # Get values
     values = {symbol: stock_data.get(key, 0) for symbol, stock_data in data.items()}
 
-    # Find best/worst
     best_symbol, worst_symbol = get_best_worst(values, higher_is_better)
 
-    # Create table
     table = Table(
         title=f"[bold white on blue] {metric_name} [/bold white on blue]",
         box=box.SIMPLE_HEAVY,
@@ -335,7 +255,6 @@ def create_comparison_table(
     for symbol in sorted(data.keys()):
         value = values[symbol]
 
-        # Format value
         if format_type == 'percent':
             value_str = f"{value:+.1f}%" if value != 0 else "N/A"
         elif format_type == 'currency':
@@ -345,7 +264,6 @@ def create_comparison_table(
         else:
             value_str = f"{value:.2f}" if value != 0 else "N/A"
 
-        # Color and rating (professional, no emojis)
         if symbol == best_symbol:
             style = "bold bright_green"
             rating = "BEST"
@@ -362,15 +280,7 @@ def create_comparison_table(
 
 
 def create_summary_table(data: Dict[str, Dict[str, Any]]) -> Optional[Table]:
-    """
-    Create comprehensive summary comparison table across all metrics.
-
-    Args:
-        data: Dictionary of stock data for all symbols
-
-    Returns:
-        Rich Table object with complete comparison matrix or None if no data
-    """
+    """Create comprehensive summary comparison table across all metrics"""
     if not data:
         return None
 
@@ -387,49 +297,35 @@ def create_summary_table(data: Dict[str, Dict[str, Any]]) -> Optional[Table]:
 
     table.add_column("Metric", style="bold white", width=18)
 
-    # Add column for each stock
     for symbol in sorted(data.keys()):
         table.add_column(symbol, justify="right", width=12, style="white")
 
     table.add_column("Winner", style="bright_green", width=8)
 
-    # Define metrics
+
     metrics = [
-        # Price & Valuation
         ("Price", 'price', False, 'currency'),
-        ("Trend (30D)", 'sparkline_prices', False, 'sparkline'),  # Special sparkline row
+        ("Trend (30D)", 'sparkline_prices', False, 'sparkline'),
         ("Market Cap", 'market_cap', False, 'billions'),
         ("P/E Ratio", 'pe', False, 'number'),
         ("Forward P/E", 'forward_pe', False, 'number'),
         ("PEG Ratio", 'peg', False, 'number'),
         ("P/B Ratio", 'pb', False, 'number'),
         ("P/S Ratio", 'ps', False, 'number'),
-
-        # Growth & Profitability
         ("Revenue Growth", 'revenue_growth', True, 'percent'),
         ("Earnings Growth", 'earnings_growth', True, 'percent'),
         ("Profit Margin", 'profit_margin', True, 'percent'),
         ("ROE", 'roe', True, 'percent'),
-
-        # Cash Flow & Financial Health
         ("Free Cash Flow", 'free_cash_flow', True, 'billions'),
         ("Operating CF", 'operating_cash_flow', True, 'billions'),
         ("Current Ratio", 'current_ratio', True, 'number'),
         ("Debt/Equity", 'debt_equity', False, 'number'),
-
-        # Dividend
         ("Dividend Yield", 'dividend_yield', True, 'percent'),
-
-        # Ownership & Sentiment
         ("Insider Own %", 'insider_ownership', True, 'percent'),
         ("Institutional %", 'institutional_ownership', True, 'percent'),
         ("Short Interest %", 'short_interest', False, 'percent'),
-
-        # Performance
         ("1Y Return", 'returns_1y', True, 'percent'),
         ("Avg Volume", 'avg_volume', False, 'millions'),
-
-        # Analyst Opinion
         ("Target Low", 'target_low', False, 'currency'),
         ("Target Mean", 'target_mean', False, 'currency'),
         ("Target High", 'target_high', False, 'currency'),
@@ -439,15 +335,12 @@ def create_summary_table(data: Dict[str, Dict[str, Any]]) -> Optional[Table]:
     for metric_name, key, higher_is_better, format_type in metrics:
         row = [metric_name]
 
-        # Get values for all stocks
         values = {}
         for symbol in sorted(data.keys()):
             value = data[symbol].get(key, 0)
             values[symbol] = value
 
-            # Format value
             if format_type == 'sparkline':
-                # Special handling for sparkline - value is a list of prices
                 value_str = create_sparkline(value) if isinstance(value, list) else "━━━━━━━━━━"
             elif format_type == 'percent':
                 value_str = f"{value:+.1f}%" if value != 0 else "—"
@@ -464,7 +357,6 @@ def create_summary_table(data: Dict[str, Dict[str, Any]]) -> Optional[Table]:
 
             row.append(value_str)
 
-        # Find winner
         best_symbol, _ = get_best_worst(values, higher_is_better)
         row.append(best_symbol if best_symbol else "—")
 
@@ -474,15 +366,7 @@ def create_summary_table(data: Dict[str, Dict[str, Any]]) -> Optional[Table]:
 
 
 def create_header(symbols: List[str]) -> Panel:
-    """
-    Create header panel for comparison matrix.
-
-    Args:
-        symbols: List of stock symbols being compared
-
-    Returns:
-        Rich Panel with header information
-    """
+    """Create header panel for comparison matrix"""
     header = Text()
     header.append("COMPARISON MATRIX\n\n", style="bold white")
     header.append(f"Comparing {len(symbols)} stocks", style="white")
@@ -495,22 +379,12 @@ def create_header(symbols: List[str]) -> Panel:
 
 
 def create_winner_panel(data: Dict[str, Dict[str, Any]]) -> Optional[Panel]:
-    """
-    Create overall winner panel with scoring analysis.
-
-    Args:
-        data: Dictionary of stock data for all symbols
-
-    Returns:
-        Rich Panel showing overall winner and reasons or None if insufficient data
-    """
+    """Create overall winner panel with scoring analysis"""
     if not data or len(data) < 2:
         return None
 
-    # Score each stock
     scores: Dict[str, int] = {symbol: 0 for symbol in data.keys()}
 
-    # Metrics to score (metric, higher_is_better, weight)
     scoring_metrics: List[Tuple[str, bool, int]] = [
         ('revenue_growth', True, 2),
         ('earnings_growth', True, 2),
@@ -528,19 +402,16 @@ def create_winner_panel(data: Dict[str, Dict[str, Any]]) -> Optional[Panel]:
         if best_symbol:
             scores[best_symbol] += weight
 
-    # Find winner
     winner = max(scores.items(), key=lambda x: x[1])
     winner_symbol = winner[0]
     winner_score = winner[1]
 
-    # Create panel
     text = Text()
     text.append(" OVERALL WINNER: ", style="bold white")
     text.append(f"{winner_symbol}\n\n", style="bold bright_green")
 
     text.append(f"Score: {winner_score}/12 points\n\n", style="bright_white")
 
-    # Why winner
     text.append("Wins in:\n", style="bold white")
 
     win_reasons = []
@@ -573,17 +444,11 @@ def create_winner_panel(data: Dict[str, Dict[str, Any]]) -> Optional[Panel]:
 
 
 def display_comparison_matrix(symbols: List[str]) -> None:
-    """
-    Display comparison matrix for multiple stocks.
-
-    Args:
-        symbols: List of stock ticker symbols to compare
-    """
+    """Display comparison matrix for multiple stocks"""
     console.clear()
     console.print(create_header(symbols))
     console.print()
 
-    # Fetch data
     console.print("[cyan]Fetching data...[/cyan]")
     data = fetch_comparison_data(symbols)
 
@@ -599,17 +464,13 @@ def display_comparison_matrix(symbols: List[str]) -> None:
     console.print(create_header(symbols))
     console.print()
 
-    # Display summary table
     console.print(create_summary_table(data))
     console.print()
 
-    # Display winner
     winner_panel = create_winner_panel(data)
     if winner_panel:
         console.print(winner_panel)
         console.print()
-
-    # Footer
     footer = Panel(
         "[bright_black]Comparison Matrix • Green = Best in category • Higher scores = Better investment[/bright_black]",
         box=box.SQUARE,
@@ -620,11 +481,6 @@ def display_comparison_matrix(symbols: List[str]) -> None:
 
 
 def main() -> None:
-    """
-    Main entry point for comparison matrix application.
-
-    Parses command-line arguments and displays stock comparison matrix.
-    """
     if len(sys.argv) < 3:
         console.print("\n[yellow]Usage:[/yellow] python COMPARISON_MATRIX.py <SYMBOL1> <SYMBOL2> [SYMBOL3] ...")
         console.print("\n[cyan]Example:[/cyan] python COMPARISON_MATRIX.py AAPL MSFT GOOGL NVDA META")

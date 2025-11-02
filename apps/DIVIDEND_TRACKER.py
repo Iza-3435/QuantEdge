@@ -45,18 +45,6 @@ THEME = {
 
 
 def create_progress_bar(value: float, max_value: float = 10, width: int = 12, show_percentage: bool = False) -> str:
-    """
-    Create a visual progress bar for metrics display.
-
-    Args:
-        value: Current value
-        max_value: Maximum value for the bar scale
-        width: Width of the bar in characters
-        show_percentage: Whether to show percentage after the bar
-
-    Returns:
-        Formatted progress bar string
-    """
     if max_value == 0:
         max_value = 1
 
@@ -71,29 +59,17 @@ def create_progress_bar(value: float, max_value: float = 10, width: int = 12, sh
 
     return f"[cyan]{bar}[/cyan]"
 
-# Top dividend-paying stocks
+
 DIVIDEND_STOCKS = [
-    # High Yield
     'T', 'VZ', 'MO', 'BTI', 'ABBV', 'CVX', 'XOM', 'PFE', 'BMY', 'D',
-    # Dividend Aristocrats
     'JNJ', 'PG', 'KO', 'PEP', 'MMM', 'WMT', 'TGT', 'LOW', 'CAT', 'MCD',
-    # Growth + Dividend
     'AAPL', 'MSFT', 'JPM', 'V', 'MA', 'HD', 'UNH', 'LLY', 'COST', 'NVDA',
-    # REITs
     'O', 'SPG', 'VICI', 'DLR', 'PLD', 'AMT', 'CCI', 'EQIX', 'PSA', 'AVB'
 ]
 
 
 def get_dividend_data(symbol: str) -> Optional[Dict[str, Any]]:
-    """
-    Fetch comprehensive dividend data for a stock symbol.
-
-    Args:
-        symbol: Stock ticker symbol
-
-    Returns:
-        Dictionary with dividend data or None if fetch fails
-    """
+    """Fetch comprehensive dividend data for a stock symbol"""
     try:
         ticker = yf.Ticker(symbol)
         info = ticker.info
@@ -107,18 +83,16 @@ def get_dividend_data(symbol: str) -> Optional[Dict[str, Any]]:
             'annual_dividend': info.get('dividendRate', 0),
             'payout_ratio': info.get('payoutRatio', 0) * 100 if info.get('payoutRatio') else 0,
             'ex_dividend_date': info.get('exDividendDate', None),
-            'dividend_date': info.get('dividendDate', None),  # Payment date
+            'dividend_date': info.get('dividendDate', None),
             '5y_avg_yield': info.get('fiveYearAvgDividendYield', 0),
-            'dividend_streak': 0,  # Years of consecutive increases
-            'is_aristocrat': False,  # 25+ years of increases
-            'is_achiever': False,  # 10+ years of increases
+            'dividend_streak': 0,
+            'is_aristocrat': False,
+            'is_achiever': False,
         }
 
-        # Get dividend history for growth calculation and streak
         try:
             dividends = ticker.dividends
             if not dividends.empty and len(dividends) >= 2:
-                # Get annual dividends
                 dividends_yearly = dividends.resample('Y').sum()
 
                 if len(dividends_yearly) >= 2:
@@ -137,7 +111,6 @@ def get_dividend_data(symbol: str) -> Optional[Dict[str, Any]]:
                         cagr = ((current / five_years_ago) ** (1/5) - 1) * 100
                         data['div_growth_5y'] = cagr
 
-                # Calculate dividend streak (consecutive years of increases)
                 try:
                     streak = 0
                     for i in range(len(dividends_yearly) - 1, 0, -1):
@@ -148,7 +121,6 @@ def get_dividend_data(symbol: str) -> Optional[Dict[str, Any]]:
 
                     data['dividend_streak'] = streak
 
-                    # Check for aristocrat/achiever status
                     if streak >= 25:
                         data['is_aristocrat'] = True
                     elif streak >= 10:
@@ -158,7 +130,6 @@ def get_dividend_data(symbol: str) -> Optional[Dict[str, Any]]:
         except:
             pass
 
-        # Calculate ex-dividend date if available
         if data['ex_dividend_date']:
             try:
                 ex_date = datetime.fromtimestamp(data['ex_dividend_date'])
@@ -168,7 +139,6 @@ def get_dividend_data(symbol: str) -> Optional[Dict[str, Any]]:
             except:
                 data['days_until_ex'] = None
 
-        # Calculate payment date if available
         if data['dividend_date']:
             try:
                 pay_date = datetime.fromtimestamp(data['dividend_date'])
@@ -183,12 +153,7 @@ def get_dividend_data(symbol: str) -> Optional[Dict[str, Any]]:
 
 
 def create_header() -> Panel:
-    """
-    Create header panel for dividend tracker.
-
-    Returns:
-        Rich Panel with header information
-    """
+    """Create header panel for dividend tracker"""
     header = Text()
     header.append("DIVIDEND TRACKER & CALENDAR\n\n", style="bold white")
     header.append("Income Investing Dashboard", style="white")
@@ -199,16 +164,7 @@ def create_header() -> Panel:
 
 
 def create_top_yields_table(dividend_data: List[Dict[str, Any]]) -> Table:
-    """
-    Create top dividend yields ranking table.
-
-    Args:
-        dividend_data: List of dividend data dictionaries
-
-    Returns:
-        Rich Table with top dividend yields
-    """
-    # Sort by yield
+    """Create top dividend yields ranking table"""
     sorted_data = sorted(
         [d for d in dividend_data if d and d['dividend_yield'] > 0],
         key=lambda x: x['dividend_yield'],
@@ -231,11 +187,9 @@ def create_top_yields_table(dividend_data: List[Dict[str, Any]]) -> Table:
     table.add_column("Strength", width=22)
     table.add_column("Annual", justify="right", width=10)
 
-    # Find max yield for scaling (typically 10% is very high)
     max_yield = 10.0
 
     for stock in sorted_data[:15]:
-        # Yield color coding
         div_yield = stock['dividend_yield']
         if div_yield >= 5:
             yield_color = "green"
@@ -244,10 +198,8 @@ def create_top_yields_table(dividend_data: List[Dict[str, Any]]) -> Table:
         else:
             yield_color = "bright_black"
 
-        # Create yield strength bar (scale to 10% max)
         yield_bar = create_progress_bar(div_yield, max_value=max_yield, width=12, show_percentage=False)
 
-        # Payout ratio color (red if > 80%, yellow if > 60%)
         payout = stock['payout_ratio']
         if payout > 80:
             payout_color = "red"
@@ -268,15 +220,7 @@ def create_top_yields_table(dividend_data: List[Dict[str, Any]]) -> Table:
 
 
 def create_upcoming_ex_dates_table(dividend_data: List[Dict[str, Any]]) -> Panel | Table:
-    """
-    Create upcoming ex-dividend dates table.
-
-    Args:
-        dividend_data: List of dividend data dictionaries
-
-    Returns:
-        Rich Table or Panel with upcoming ex-dividend dates
-    """
+    """Create upcoming ex-dividend dates table"""
     upcoming = []
     for data in dividend_data:
         if data and data.get('days_until_ex') is not None:
@@ -284,7 +228,7 @@ def create_upcoming_ex_dates_table(dividend_data: List[Dict[str, Any]]) -> Panel
             if 0 <= days <= 60:
                 upcoming.append(data)
 
-    upcoming.sort(key=lambda x: x['days_until_ex'])
+    upcoming.sort(key=lambda x: x['days_until_ex'] or 0)
 
     if not upcoming:
         return Panel(
@@ -335,15 +279,7 @@ def create_upcoming_ex_dates_table(dividend_data: List[Dict[str, Any]]) -> Panel
 
 
 def create_growth_leaders_table(dividend_data: List[Dict[str, Any]]) -> Table:
-    """
-    Create dividend growth leaders table (5-year CAGR).
-
-    Args:
-        dividend_data: List of dividend data dictionaries
-
-    Returns:
-        Rich Table with dividend growth leaders
-    """
+    """Create dividend growth leaders table (5-year CAGR)"""
     with_growth = [d for d in dividend_data if d and d.get('div_growth_5y')]
     with_growth.sort(key=lambda x: x['div_growth_5y'], reverse=True)
 
@@ -378,15 +314,7 @@ def create_growth_leaders_table(dividend_data: List[Dict[str, Any]]) -> Table:
 
 
 def create_sector_yields_table(dividend_data: List[Dict[str, Any]]) -> Table:
-    """
-    Create average dividend yields by sector table.
-
-    Args:
-        dividend_data: List of dividend data dictionaries
-
-    Returns:
-        Rich Table with sector yield averages
-    """
+    """Create average dividend yields by sector table"""
     sectors: Dict[str, List[float]] = {}
     for data in dividend_data:
         if data and data['dividend_yield'] > 0:
@@ -425,15 +353,7 @@ def create_sector_yields_table(dividend_data: List[Dict[str, Any]]) -> Table:
 
 
 def create_dividend_aristocrats_table(dividend_data: List[Dict[str, Any]]) -> Optional[Table]:
-    """
-    Create dividend aristocrats and achievers table.
-
-    Args:
-        dividend_data: List of dividend data dictionaries
-
-    Returns:
-        Rich Table with aristocrats/achievers or None if none found
-    """
+    """Create dividend aristocrats and achievers table"""
     with_streaks = [d for d in dividend_data if d and d.get('dividend_streak', 0) >= 10]
     with_streaks.sort(key=lambda x: x['dividend_streak'], reverse=True)
 
@@ -460,7 +380,6 @@ def create_dividend_aristocrats_table(dividend_data: List[Dict[str, Any]]) -> Op
     for stock in with_streaks:
         streak = stock['dividend_streak']
 
-        # Status badge (professional, no emojis)
         if stock.get('is_aristocrat'):
             status = "ELITE"
             status_color = "bright_green"
@@ -471,7 +390,6 @@ def create_dividend_aristocrats_table(dividend_data: List[Dict[str, Any]]) -> Op
             status = "GOOD"
             status_color = "white"
 
-        # Streak color
         if streak >= 25:
             streak_color = "bright_green"
         elif streak >= 15:
@@ -496,12 +414,7 @@ def create_dividend_aristocrats_table(dividend_data: List[Dict[str, Any]]) -> Op
 
 
 def create_drip_calculator() -> Panel:
-    """
-    Create DRIP projection info panel.
-
-    Returns:
-        Rich Panel with DRIP calculator information
-    """
+    """Create DRIP projection info panel"""
     text = Text()
     text.append("DIVIDEND REINVESTMENT CALCULATOR\n\n", style="bold white")
     text.append("Calculate income from dividend stocks:\n\n", style="white")
@@ -522,9 +435,6 @@ def create_drip_calculator() -> Panel:
 
 
 def main() -> None:
-    """
-    Main entry point for dividend tracker application.
-    """
     console.clear()
     console.print(create_header())
     console.print()
@@ -541,28 +451,23 @@ def main() -> None:
     console.print(create_header())
     console.print()
 
-    # Top yields
     console.print(create_top_yields_table(dividend_data))
     console.print()
 
-    # Upcoming ex-dates
     console.print(create_upcoming_ex_dates_table(dividend_data))
     console.print()
 
-    # Side by side: Growth leaders + Sector yields
     console.print(Columns([
         create_growth_leaders_table(dividend_data),
         create_sector_yields_table(dividend_data)
     ]))
     console.print()
 
-    # Dividend Aristocrats & Achievers
     aristocrats = create_dividend_aristocrats_table(dividend_data)
     if aristocrats:
         console.print(aristocrats)
         console.print()
 
-    # DRIP calculator
     console.print(create_drip_calculator())
     console.print()
 
