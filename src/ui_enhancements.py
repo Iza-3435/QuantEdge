@@ -4,22 +4,12 @@ Enhanced visual components: color gradients, progress bars, better sparklines, s
 """
 
 import pandas as pd
-from typing import List, Optional
+from typing import Dict, List, Optional, Any
 from rich.text import Text
 from rich.panel import Panel
 
 
-def get_performance_color(value: float, thresholds: Optional[dict] = None) -> str:
-    """
-    Get color based on performance value with gradient.
-
-    Args:
-        value: Performance value (e.g., return %)
-        thresholds: Optional custom thresholds
-
-    Returns:
-        Color string for rich formatting
-    """
+def get_performance_color(value: float, thresholds: Optional[Dict] = None) -> str:
     if thresholds is None:
         thresholds = {
             'excellent': 20,
@@ -42,18 +32,6 @@ def get_performance_color(value: float, thresholds: Optional[dict] = None) -> st
 
 def create_progress_bar(value: float, max_value: float, width: int = 10,
                        color: Optional[str] = None) -> str:
-    """
-    Create a progress bar visualization.
-
-    Args:
-        value: Current value
-        max_value: Maximum value
-        width: Width of the bar in characters
-        color: Optional color override
-
-    Returns:
-        Formatted progress bar string
-    """
     if max_value == 0:
         percentage = 0
     else:
@@ -62,7 +40,6 @@ def create_progress_bar(value: float, max_value: float, width: int = 10,
     filled = int(percentage * width)
     empty = width - filled
 
-    # Auto-color based on percentage if not specified
     if color is None:
         if percentage >= 0.8:
             color = "bright_green"
@@ -79,43 +56,27 @@ def create_progress_bar(value: float, max_value: float, width: int = 10,
 
 def create_enhanced_sparkline(prices: List[float], width: int = 30,
                               show_trend: bool = True) -> str:
-    """
-    Create enhanced 30-day sparkline with better detail.
-
-    Args:
-        prices: List of price values
-        width: Number of bars to display (default 30)
-        show_trend: Whether to show trend indicator
-
-    Returns:
-        Formatted sparkline string with trend
-    """
     if not prices or len(prices) < 2:
         return "━" * width
 
-    # Clean data
     prices = [p for p in prices if not pd.isna(p)]
     if len(prices) < 2:
         return "━" * width
 
-    # Normalize and create sparkline
     min_p, max_p = min(prices), max(prices)
     range_p = max_p - min_p if max_p != min_p else 1
 
-    # More detailed characters for better resolution
     chars = '▁▂▃▄▅▆▇█'
     sparkline = ''.join(
         chars[min(int(((p - min_p) / range_p) * 7), 7)]
         for p in prices[-width:]
     )
 
-    # Calculate trend
     if show_trend:
         start_price = prices[0]
         end_price = prices[-1]
         change_pct = ((end_price - start_price) / start_price) * 100
 
-        # Color based on performance
         if end_price > start_price:
             color = "green" if change_pct > 5 else "bright_green"
             trend = f"↗ +{change_pct:.1f}%"
@@ -133,18 +94,7 @@ def create_enhanced_sparkline(prices: List[float], width: int = 30,
 
 
 def get_recommendation_indicator(score: float, metric_type: str = "score") -> str:
-    """
-    Get status indicator with color (no emojis).
-
-    Args:
-        score: Numeric score
-        metric_type: Type of metric (score, rsi, momentum)
-
-    Returns:
-        Formatted indicator string
-    """
     if metric_type == "score":
-        # Score out of 100
         if score >= 80:
             return "[bright_green]STRONG BUY[/bright_green]"
         elif score >= 65:
@@ -157,7 +107,6 @@ def get_recommendation_indicator(score: float, metric_type: str = "score") -> st
             return "[red]STRONG SELL[/red]"
 
     elif metric_type == "rsi":
-        # RSI (0-100)
         if score > 70:
             return "[red]OVERBOUGHT[/red]"
         elif score > 60:
@@ -170,7 +119,6 @@ def get_recommendation_indicator(score: float, metric_type: str = "score") -> st
             return "[green]OVERSOLD[/green]"
 
     elif metric_type == "momentum":
-        # Momentum score
         if score >= 75:
             return "[green]STRONG[/green]"
         elif score >= 50:
@@ -179,7 +127,6 @@ def get_recommendation_indicator(score: float, metric_type: str = "score") -> st
             return "[red]WEAK[/red]"
 
     elif metric_type == "quality":
-        # Quality score
         if score >= 80:
             return "[bright_green]EXCELLENT[/bright_green]"
         elif score >= 65:
@@ -196,17 +143,6 @@ def get_recommendation_indicator(score: float, metric_type: str = "score") -> st
 
 def create_metric_heatmap_row(values: List[float], labels: List[str],
                               width: int = 15) -> str:
-    """
-    Create a single row heatmap for multiple metrics.
-
-    Args:
-        values: List of values (0-100 scale)
-        labels: List of labels for each value
-        width: Width for each cell
-
-    Returns:
-        Formatted heatmap row
-    """
     row = ""
     for value, label in zip(values, labels):
         color = get_performance_color(value, {
@@ -216,7 +152,6 @@ def create_metric_heatmap_row(values: List[float], labels: List[str],
             'poor': 0
         })
 
-        # Create colored cell
         bar = create_progress_bar(value, 100, width=8, color=color)
         row += f"{label}: {bar} {value:.0f}  "
 
@@ -224,16 +159,6 @@ def create_metric_heatmap_row(values: List[float], labels: List[str],
 
 
 def format_currency(value: float, decimals: int = 2) -> str:
-    """
-    Format currency with proper suffixes (K, M, B, T).
-
-    Args:
-        value: Numeric value
-        decimals: Number of decimal places
-
-    Returns:
-        Formatted currency string
-    """
     if value >= 1_000_000_000_000:
         return f"${value / 1_000_000_000_000:.{decimals}f}T"
     elif value >= 1_000_000_000:
@@ -247,17 +172,6 @@ def format_currency(value: float, decimals: int = 2) -> str:
 
 
 def format_percentage(value: float, decimals: int = 2, colored: bool = True) -> str:
-    """
-    Format percentage with color coding.
-
-    Args:
-        value: Percentage value
-        decimals: Number of decimal places
-        colored: Whether to add color formatting
-
-    Returns:
-        Formatted percentage string
-    """
     if colored:
         color = get_performance_color(value)
         sign = "+" if value > 0 else ""
@@ -268,17 +182,6 @@ def format_percentage(value: float, decimals: int = 2, colored: bool = True) -> 
 
 
 def create_score_badge(score: float, max_score: float, label: str) -> str:
-    """
-    Create a visual score badge.
-
-    Args:
-        score: Current score
-        max_score: Maximum possible score
-        label: Label for the badge
-
-    Returns:
-        Formatted badge string
-    """
     percentage = (score / max_score) * 100 if max_score > 0 else 0
     color = get_performance_color(percentage, {
         'excellent': 80,
@@ -291,17 +194,7 @@ def create_score_badge(score: float, max_score: float, label: str) -> str:
     return f"{label}: {bar} [{color}]{score:.0f}/{max_score:.0f}[/{color}]"
 
 
-def create_comparison_bars(values: dict, width: int = 20) -> List[str]:
-    """
-    Create horizontal comparison bars for multiple items.
-
-    Args:
-        values: Dictionary of {label: value}
-        width: Width of bars
-
-    Returns:
-        List of formatted bar strings
-    """
+def create_comparison_bars(values: Dict[str, float], width: int = 20) -> List[str]:
     if not values:
         return []
 
@@ -322,49 +215,28 @@ def create_comparison_bars(values: dict, width: int = 20) -> List[str]:
 
 
 def create_trend_indicator(current: float, previous: float) -> str:
-    """
-    Create trend indicator showing change.
-
-    Args:
-        current: Current value
-        previous: Previous value
-
-    Returns:
-        Formatted trend indicator
-    """
     if previous == 0:
-        return "⚪ N/A"
+        return "N/A"
 
     change_pct = ((current - previous) / previous) * 100
 
     if change_pct > 5:
-        return f"⬆️ [bright_green]+{change_pct:.1f}%[/bright_green]"
+        return f"[bright_green]+{change_pct:.1f}%[/bright_green]"
     elif change_pct > 0:
-        return f"↗ [green]+{change_pct:.1f}%[/green]"
+        return f"[green]+{change_pct:.1f}%[/green]"
     elif change_pct > -5:
-        return f"↘ [red]{change_pct:.1f}%[/red]"
+        return f"[red]{change_pct:.1f}%[/red]"
     else:
-        return f"⬇️ [bright_red]{change_pct:.1f}%[/bright_red]"
+        return f"[bright_red]{change_pct:.1f}%[/bright_red]"
 
 
-def create_signal_panel(signals: dict, title: str = "Signals") -> Panel:
-    """
-    Create a panel showing multiple signals.
-
-    Args:
-        signals: Dictionary of signal_name: signal_value
-        title: Panel title
-
-    Returns:
-        Rich Panel object
-    """
+def create_signal_panel(signals: Dict[str, Any], title: str = "Signals") -> Panel:
     text = Text()
 
     for signal_name, signal_value in signals.items():
         text.append(f"{signal_name}: ", style="bright_black")
 
         if isinstance(signal_value, str):
-            # Status signal
             if "BUY" in signal_value.upper():
                 text.append(f"{signal_value}\n", style="green")
             elif "SELL" in signal_value.upper():
@@ -374,7 +246,6 @@ def create_signal_panel(signals: dict, title: str = "Signals") -> Panel:
             else:
                 text.append(f"{signal_value}\n", style="white")
         else:
-            # Numeric signal
             color = get_performance_color(signal_value)
             text.append(f"{signal_value:.2f}\n", style=color)
 
@@ -383,33 +254,19 @@ def create_signal_panel(signals: dict, title: str = "Signals") -> Panel:
 
 
 def create_mini_chart(values: List[float], height: int = 5, width: int = 40) -> str:
-    """
-    Create a mini ASCII chart.
-
-    Args:
-        values: List of values to chart
-        height: Height of chart in lines
-        width: Width of chart in characters
-
-    Returns:
-        Multi-line ASCII chart string
-    """
     if not values or len(values) < 2:
         return "No data"
 
-    # Normalize values to height
     min_val = min(values)
     max_val = max(values)
     range_val = max_val - min_val if max_val != min_val else 1
 
-    # Sample values to fit width
     if len(values) > width:
         step = len(values) // width
         sampled = values[::step][:width]
     else:
         sampled = values
 
-    # Create chart
     chart_lines = []
     for y in range(height - 1, -1, -1):
         line = ""

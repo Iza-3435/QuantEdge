@@ -4,33 +4,26 @@ Reduces API calls and speeds up data fetching
 """
 
 import pickle
-import os
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Dict, Optional, Any, Callable
 import concurrent.futures
 import yfinance as yf
 from functools import wraps
-import time
 
-# Cache directory
 CACHE_DIR = Path(__file__).parent.parent / '.cache'
 CACHE_DIR.mkdir(exist_ok=True)
 
-# Cache duration (15 minutes = free yfinance delay)
 CACHE_DURATION = timedelta(minutes=15)
 
 
 class DataCache:
-    """Simple file-based cache for market data"""
-
     @staticmethod
-    def get_cache_path(key):
-        """Get cache file path for a key"""
+    def get_cache_path(key: str) -> Path:
         return CACHE_DIR / f"{key}.pkl"
 
     @staticmethod
-    def get(key):
-        """Get cached data if fresh"""
+    def get(key: str) -> Optional[Any]:
         cache_path = DataCache.get_cache_path(key)
 
         if not cache_path.exists():
@@ -40,7 +33,6 @@ class DataCache:
             with open(cache_path, 'rb') as f:
                 cached = pickle.load(f)
 
-            # Check if cache is still fresh
             timestamp = cached.get('timestamp')
             if timestamp and datetime.now() - timestamp < CACHE_DURATION:
                 return cached.get('data')
@@ -51,8 +43,7 @@ class DataCache:
         return None
 
     @staticmethod
-    def set(key, data):
-        """Cache data with timestamp"""
+    def set(key: str, data: Any) -> None:
         cache_path = DataCache.get_cache_path(key)
 
         try:
@@ -66,8 +57,7 @@ class DataCache:
             pass
 
     @staticmethod
-    def clear_old():
-        """Clear cache older than CACHE_DURATION"""
+    def clear_old() -> None:
         try:
             for cache_file in CACHE_DIR.glob('*.pkl'):
                 try:
@@ -77,29 +67,25 @@ class DataCache:
                     timestamp = cached.get('timestamp')
                     if timestamp and datetime.now() - timestamp > CACHE_DURATION:
                         cache_file.unlink()
-                except:
+                except Exception:
                     continue
         except Exception:
             pass
 
 
-def cached(key_func=None):
-    """Decorator to cache function results"""
-    def decorator(func):
+def cached(key_func: Optional[Callable] = None) -> Callable:
+    def decorator(func: Callable) -> Callable:
         @wraps(func)
-        def wrapper(*args, **kwargs):
-            # Generate cache key
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             if key_func:
                 cache_key = key_func(*args, **kwargs)
             else:
                 cache_key = f"{func.__name__}_{str(args)}_{str(kwargs)}"
 
-            # Try to get from cache
             cached_data = DataCache.get(cache_key)
             if cached_data is not None:
                 return cached_data
 
-            # Execute function and cache result
             result = func(*args, **kwargs)
             DataCache.set(cache_key, result)
             return result
@@ -108,8 +94,7 @@ def cached(key_func=None):
     return decorator
 
 
-def fetch_parallel(symbols, fetch_func, max_workers=10):
-    """Fetch data for multiple symbols in parallel"""
+def fetch_parallel(symbols: list, fetch_func: Callable, max_workers: int = 10) -> Dict[str, Any]:
     results = {}
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -129,8 +114,7 @@ def fetch_parallel(symbols, fetch_func, max_workers=10):
 
 
 @cached(key_func=lambda symbol: f"ticker_info_{symbol}")
-def get_ticker_info(symbol):
-    """Get ticker info with caching"""
+def get_ticker_info(symbol: str) -> Dict[str, Any]:
     try:
         ticker = yf.Ticker(symbol)
         return ticker.info
@@ -139,8 +123,7 @@ def get_ticker_info(symbol):
 
 
 @cached(key_func=lambda symbol, period: f"ticker_history_{symbol}_{period}")
-def get_ticker_history(symbol, period='1y'):
-    """Get ticker history with caching"""
+def get_ticker_history(symbol: str, period: str = '1y') -> Optional[Any]:
     try:
         ticker = yf.Ticker(symbol)
         return ticker.history(period=period)
@@ -148,9 +131,7 @@ def get_ticker_history(symbol, period='1y'):
         return None
 
 
-def get_data_freshness():
-    """Get timestamp of when data was last updated"""
-    # Check newest cache file
+def get_data_freshness() -> Optional[datetime]:
     try:
         cache_files = list(CACHE_DIR.glob('*.pkl'))
         if not cache_files:
@@ -165,8 +146,7 @@ def get_data_freshness():
         return None
 
 
-def format_data_age(timestamp):
-    """Format how old the data is"""
+def format_data_age(timestamp: Optional[datetime]) -> str:
     if not timestamp:
         return "Just now"
 
@@ -185,5 +165,4 @@ def format_data_age(timestamp):
         return f"{days} day ago"
 
 
-# Auto-cleanup on import
 DataCache.clear_old()
