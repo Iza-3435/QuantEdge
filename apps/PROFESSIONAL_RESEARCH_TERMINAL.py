@@ -25,7 +25,7 @@ from rich import box
 warnings.filterwarnings('ignore')
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from utils.data_cache import DataCache, get_ticker_info, get_ticker_history
+from src.data_cache import DataCache, get_ticker_info, get_ticker_history
 
 console = Console()
 

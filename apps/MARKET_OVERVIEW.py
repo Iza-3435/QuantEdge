@@ -23,7 +23,7 @@ from rich import box
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.data_cache import DataCache, fetch_parallel
+from src.data_cache import DataCache, fetch_parallel
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

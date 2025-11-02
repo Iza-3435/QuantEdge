@@ -26,7 +26,7 @@ from typing import Dict, List, Optional, Tuple, Any
 warnings.filterwarnings('ignore')
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from utils.data_cache import DataCache, fetch_parallel
+from src.data_cache import DataCache, fetch_parallel
 from src.ui_enhancements import create_enhanced_sparkline, get_performance_color
 
 console = Console()
