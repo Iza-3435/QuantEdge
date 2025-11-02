@@ -13,18 +13,18 @@ from dataclasses import dataclass
 
 from rich.console import Console
 from rich.prompt import Prompt
+from rich.table import Table
+from rich.panel import Panel
+from rich.text import Text
+from rich import box
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.ui.components import (
-    create_header,
-    create_table,
-    create_panel,
-    create_footer,
-    show_error
-)
-from src.ui.config import THEME
-from src.core.validators import NumericValidator, ValidationResult
+THEME = {
+    'header_bg': 'on grey23',
+    'border': 'grey35',
+    'panel_bg': 'on grey11'
+}
 
 logging.basicConfig(
     level=logging.INFO,
@@ -54,8 +54,8 @@ class Feature:
 
 
 FEATURES: List[Feature] = [
-    Feature(1, 'Professional Research Terminal', 'apps/PROFESSIONAL_RESEARCH_TERMINAL.py',
-            'Complete stock research & analysis', True),
+    Feature(1, 'Institutional Terminal (Ultra-Dense)', 'apps/INSTITUTIONAL_TERMINAL.py',
+            'Bloomberg-level AI analysis (LSTM, Sentiment, Risk, Options, Fundamentals)', True),
     Feature(2, 'Market Overview', 'apps/MARKET_OVERVIEW.py',
             'Major markets & news (clickable)', False),
     Feature(3, 'Portfolio Manager Pro', 'apps/PORTFOLIO_PRO.py',
@@ -82,46 +82,45 @@ FEATURES: List[Feature] = [
             'Find bullish technical setups', False),
     Feature(14, 'Correlation Matrix', 'apps/CORRELATION_MATRIX.py',
             'Find correlations & hedges', True),
+    Feature(15, 'Backtesting Engine', 'apps/BACKTESTING_ENGINE.py',
+            'Test trading strategies with walk-forward validation', True),
 ]
 
 
 def render_header() -> None:
     """Render the application header."""
-    header = create_header(
-        title="AI MARKET INTELLIGENCE SYSTEM",
-        subtitle=None,
-        show_timestamp=True
-    )
-    console.print(header)
+    from datetime import datetime
+    header = Text()
+    header.append("AI MARKET INTELLIGENCE SYSTEM\n", style="bold white")
+    header.append(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", style="bright_black")
+    console.print(Panel(header, border_style=THEME['border'], box=box.SQUARE, style=THEME['panel_bg']))
     console.print()
 
 
 def render_menu() -> None:
     """Render the feature menu table."""
-    columns = [
-        {'name': '#', 'style': 'white', 'width': 4, 'justify': 'right'},
-        {'name': 'Feature', 'style': 'white', 'width': 35, 'justify': 'left'},
-        {'name': 'Description', 'style': 'white', 'justify': 'left'},
-    ]
+    table = Table(show_header=True, header_style="bold white", border_style=THEME['border'],
+                  box=box.SQUARE, style=THEME['panel_bg'])
 
-    rows = [
-        [str(f.id), f.name, f.desc]
-        for f in FEATURES
-    ]
+    table.add_column("#", justify="right", style="white", width=4)
+    table.add_column("Feature", justify="left", style="white", width=45)
+    table.add_column("Description", justify="left", style="white")
 
-    table = create_table(columns, rows)
-    panel = create_panel(table, title="AVAILABLE FEATURES")
-    console.print(panel)
+    for f in FEATURES:
+        table.add_row(str(f.id), f.name, f.desc)
+
+    console.print(Panel(table, title="[bold white]AVAILABLE FEATURES[/bold white]",
+                       border_style=THEME['border'], box=box.SQUARE, style=THEME['panel_bg']))
     console.print()
 
 
 def render_footer() -> None:
     """Render the menu footer."""
-    footer = create_footer([
-        "Enter feature number",
-        "Type 'q' to quit"
-    ])
-    console.print(footer)
+    footer = Text()
+    footer.append("Enter feature number", style="white")
+    footer.append(" │ ", style="bright_black")
+    footer.append("Type 'q' to quit", style="white")
+    console.print(Panel(footer, border_style=THEME['border'], box=box.SQUARE, style=THEME['panel_bg']))
     console.print()
 
 
@@ -132,22 +131,19 @@ def get_stock_symbols() -> List[str]:
     Returns:
         List of validated uppercase stock symbols
     """
-    from src.core.validators import StockSymbolValidator
-
     symbol_input = Prompt.ask(
         "[white]Enter stock symbol(s) (space-separated)[/white]",
         default="AAPL"
     )
 
-    symbols = [s.strip() for s in symbol_input.split() if s.strip()]
-    result = StockSymbolValidator.validate_list(symbols)
+    symbols = [s.strip().upper() for s in symbol_input.split() if s.strip()]
 
-    if not result.is_valid:
-        show_error(console, result.error, "Invalid Input")
+    if not symbols:
+        console.print("[red]Error: No symbols provided[/red]")
         logger.warning(f"Invalid symbols: {symbol_input}")
         return get_stock_symbols()
 
-    return result.value
+    return symbols
 
 
 def execute_feature(feature: Feature) -> None:
@@ -160,21 +156,16 @@ def execute_feature(feature: Feature) -> None:
     console.clear()
 
     if not Path(feature.file).exists():
-        show_error(
-            console,
-            f"Feature file not found: {feature.file}",
-            "Configuration Error"
-        )
+        console.print(f"\n[red]Error: Feature file not found: {feature.file}[/red]\n")
         logger.error(f"Missing feature file: {feature.file}")
         input("Press Enter to continue...")
         return
 
     args: List[str] = []
     if feature.args:
-        console.print(create_panel(
-            f"[white]Running: {feature.name}[/white]",
-            title="Feature Launcher"
-        ))
+        text = Text(f"Running: {feature.name}", style="white")
+        console.print(Panel(text, title="[bold white]Feature Launcher[/bold white]",
+                           border_style=THEME['border'], box=box.SQUARE, style=THEME['panel_bg']))
         console.print()
         symbols = get_stock_symbols()
 
@@ -197,27 +188,15 @@ def execute_feature(feature: Feature) -> None:
             logger.warning(f"Feature exited with code {result.returncode}")
 
     except subprocess.CalledProcessError as e:
-        show_error(
-            console,
-            f"Feature execution failed: {e}",
-            "Execution Error"
-        )
+        console.print(f"\n[red]Error: Feature execution failed: {e}[/red]\n")
         logger.error(f"Subprocess error: {e}", exc_info=True)
 
     except FileNotFoundError as e:
-        show_error(
-            console,
-            f"Python interpreter not found: {e}",
-            "System Error"
-        )
+        console.print(f"\n[red]Error: Python interpreter not found: {e}[/red]\n")
         logger.error(f"Python not found: {e}", exc_info=True)
 
     except Exception as e:
-        show_error(
-            console,
-            f"Unexpected error: {e}",
-            "Error"
-        )
+        console.print(f"\n[red]Error: Unexpected error: {e}[/red]\n")
         logger.error(f"Unexpected error: {e}", exc_info=True)
 
     console.print()
@@ -237,16 +216,20 @@ def validate_choice(choice: str) -> Optional[Feature]:
     if choice.lower() in ['q', 'quit', 'exit']:
         return None
 
-    result = NumericValidator.validate_int(choice, min_value=1, max_value=len(FEATURES))
-
-    if not result.is_valid:
-        console.print(f"\n[red]{result.error}[/red]")
+    try:
+        feature_id = int(choice)
+        if 1 <= feature_id <= len(FEATURES):
+            return FEATURES[feature_id - 1]
+        else:
+            console.print(f"\n[red]Error: Please enter a number between 1 and {len(FEATURES)}[/red]")
+            logger.warning(f"Invalid choice: {choice}")
+            input("Press Enter to continue...")
+            return None
+    except ValueError:
+        console.print(f"\n[red]Error: Invalid input. Please enter a number.[/red]")
         logger.warning(f"Invalid choice: {choice}")
         input("Press Enter to continue...")
         return None
-
-    feature_id = result.value
-    return FEATURES[feature_id - 1]
 
 
 def run_menu_loop() -> None:
@@ -282,7 +265,7 @@ def main() -> None:
         sys.exit(0)
 
     except Exception as e:
-        show_error(console, f"Fatal error: {e}", "Fatal Error")
+        console.print(f"\n[red]Fatal error: {e}[/red]\n")
         logger.critical(f"Fatal error: {e}", exc_info=True)
         sys.exit(1)
 

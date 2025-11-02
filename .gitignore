@@ -36,9 +36,10 @@ ENV/
 # Jupyter
 .ipynb_checkpoints
 
-# Environment
+# Environment - NEVER commit API keys
 .env
 .env.local
+.env.example
 
 # Data
 data/raw/*
@@ -62,6 +63,9 @@ mlartifacts/
 *.pth
 *.h5
 *.faiss
+models_cache/
+model_cache/
+.cache/
 
 # Testing
 .coverage
