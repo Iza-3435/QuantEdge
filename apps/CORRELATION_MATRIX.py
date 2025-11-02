@@ -22,6 +22,7 @@ from rich import box
 from rich.columns import Columns
 import sys
 import warnings
+from typing import Dict, List, Optional, Tuple, Any
 warnings.filterwarnings('ignore')
 
 console = Console()
@@ -42,10 +43,19 @@ THEME = {
 }
 
 
-def get_stock_data(symbols, period='1y'):
-    """Fetch historical data for correlation analysis"""
+def get_stock_data(symbols: List[str], period: str = '1y') -> Optional[pd.DataFrame]:
+    """
+    Fetch historical price data for correlation analysis.
+
+    Args:
+        symbols: List of stock ticker symbols
+        period: Time period for historical data (default '1y')
+
+    Returns:
+        DataFrame with closing prices for all symbols or None if fetch fails
+    """
     try:
-        data = {}
+        data: Dict[str, pd.Series] = {}
         for symbol in symbols:
             try:
                 ticker = yf.Ticker(symbol)
@@ -76,8 +86,16 @@ def get_stock_data(symbols, period='1y'):
         return None
 
 
-def calculate_correlation_matrix(price_data):
-    """Calculate correlation matrix from price data"""
+def calculate_correlation_matrix(price_data: pd.DataFrame) -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
+    """
+    Calculate correlation matrix from price data.
+
+    Args:
+        price_data: DataFrame with closing prices
+
+    Returns:
+        Tuple of (correlation_matrix, returns_dataframe) or (None, None) if calculation fails
+    """
     try:
         # Calculate daily returns
         returns = price_data.pct_change().dropna()
@@ -92,8 +110,17 @@ def calculate_correlation_matrix(price_data):
         return None, None
 
 
-def calculate_beta(stock_returns, market_returns):
-    """Calculate beta (volatility vs market)"""
+def calculate_beta(stock_returns: np.ndarray, market_returns: np.ndarray) -> float:
+    """
+    Calculate beta (stock volatility relative to market).
+
+    Args:
+        stock_returns: Array of stock daily returns
+        market_returns: Array of market daily returns
+
+    Returns:
+        Beta value (1.0 if calculation fails)
+    """
     try:
         covariance = np.cov(stock_returns, market_returns)[0][1]
         market_variance = np.var(market_returns)
@@ -106,8 +133,16 @@ def calculate_beta(stock_returns, market_returns):
         return 1.0
 
 
-def create_header(symbols):
-    """Create header"""
+def create_header(symbols: List[str]) -> Panel:
+    """
+    Create header panel for correlation matrix.
+
+    Args:
+        symbols: List of stock symbols being analyzed
+
+    Returns:
+        Rich Panel with header information
+    """
     header = Text()
     header.append("CORRELATION MATRIX\n\n", style="bold white")
     header.append(f"Analyzing {len(symbols)} stocks", style="white")
@@ -119,8 +154,16 @@ def create_header(symbols):
     return Panel(header, box=box.SQUARE, border_style=THEME['border'], padding=(1, 2), style=THEME['panel_bg'])
 
 
-def create_correlation_table(corr_matrix):
-    """Create correlation heatmap table"""
+def create_correlation_table(corr_matrix: pd.DataFrame) -> Panel:
+    """
+    Create correlation heatmap table with color-coded values.
+
+    Args:
+        corr_matrix: Correlation matrix DataFrame
+
+    Returns:
+        Rich Panel containing correlation heatmap table
+    """
     symbols = corr_matrix.columns.tolist()
 
     table = Table(
@@ -177,8 +220,17 @@ def create_correlation_table(corr_matrix):
     )
 
 
-def create_beta_table(returns, symbols):
-    """Create beta analysis table"""
+def create_beta_table(returns: pd.DataFrame, symbols: List[str]) -> Panel:
+    """
+    Create beta analysis table comparing stocks to S&P 500.
+
+    Args:
+        returns: DataFrame of daily returns
+        symbols: List of stock symbols
+
+    Returns:
+        Rich Panel containing beta analysis table
+    """
     # Get S&P 500 data for beta calculation
     try:
         spy = yf.Ticker('^GSPC')
@@ -263,9 +315,17 @@ def create_beta_table(returns, symbols):
         )
 
 
-def create_hedge_finder_table(corr_matrix):
-    """Find potential hedges (negatively correlated stocks)"""
-    hedges = []
+def create_hedge_finder_table(corr_matrix: pd.DataFrame) -> Panel:
+    """
+    Find and display potential hedges (negatively correlated stocks).
+
+    Args:
+        corr_matrix: Correlation matrix DataFrame
+
+    Returns:
+        Rich Panel showing hedge opportunities
+    """
+    hedges: List[Dict[str, Any]] = []
 
     symbols = corr_matrix.columns.tolist()
     for i, symbol1 in enumerate(symbols):
@@ -332,12 +392,20 @@ def create_hedge_finder_table(corr_matrix):
     )
 
 
-def create_diversification_score_panel(corr_matrix):
-    """Calculate portfolio diversification score"""
+def create_diversification_score_panel(corr_matrix: pd.DataFrame) -> Panel:
+    """
+    Calculate and display portfolio diversification score.
+
+    Args:
+        corr_matrix: Correlation matrix DataFrame
+
+    Returns:
+        Rich Panel with diversification analysis
+    """
     try:
         # Calculate average correlation (excluding diagonal)
         n = len(corr_matrix)
-        total_corr = 0
+        total_corr = 0.0
         count = 0
 
         for i in range(n):
@@ -405,8 +473,12 @@ def create_diversification_score_panel(corr_matrix):
         )
 
 
-def main():
-    """Main function"""
+def main() -> None:
+    """
+    Main entry point for correlation matrix application.
+
+    Parses command-line arguments and displays correlation analysis.
+    """
     if len(sys.argv) < 2:
         console.print("[yellow]Usage: python CORRELATION_MATRIX.py AAPL MSFT GOOGL NVDA ...[/yellow]")
         console.print("[white]Provide 2-20 stock symbols to analyze[/white]")
