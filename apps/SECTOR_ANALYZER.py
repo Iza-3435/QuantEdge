@@ -1,19 +1,14 @@
 """
-SECTOR ANALYZER - Deep Dive
+Sector Analyzer
 Analyze sector performance, top players, and trends
-
-Features:
-- Sector performance rankings
-- Top companies by sector (market leaders)
-- Sector rotation analysis
-- Valuation comparison across sectors
-- Growth vs value sectors
-- Defensive vs cyclical trends
 """
+import sys
+import warnings
+from typing import Dict, List, Optional, Tuple, Any
+from datetime import datetime
 
 import yfinance as yf
 import pandas as pd
-from datetime import datetime
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -21,8 +16,7 @@ from rich.text import Text
 from rich import box
 from rich.columns import Columns
 from rich.prompt import Prompt
-import sys
-import warnings
+
 warnings.filterwarnings('ignore')
 
 console = Console()
@@ -73,8 +67,7 @@ SECTOR_LEADERS = {
 }
 
 
-def get_sector_performance():
-    """Get sector ETF performance"""
+def get_sector_performance() -> Dict[str, Dict[str, float]]:
     sector_data = {}
 
     for sector, etf in SECTOR_ETFS.items():
@@ -107,8 +100,7 @@ def get_sector_performance():
     return sector_data
 
 
-def get_sector_leaders_data(sector):
-    """Get data for top companies in a sector"""
+def get_sector_leaders_data(sector: str) -> List[Dict[str, Any]]:
     leaders = SECTOR_LEADERS.get(sector, [])
     leaders_data = []
 
@@ -137,8 +129,7 @@ def get_sector_leaders_data(sector):
     return leaders_data
 
 
-def create_header():
-    """Create header"""
+def create_header() -> Panel:
     header = Text()
     header.append("SECTOR ANALYZER - Deep Dive\n\n", style="bold white")
     header.append("Sector Performance & Market Leaders", style="white")
@@ -148,9 +139,7 @@ def create_header():
     return Panel(header, box=box.SQUARE, border_style=THEME['border'], padding=(1, 2), style=THEME['panel_bg'])
 
 
-def create_sector_performance_table(sector_data):
-    """Create sector performance rankings table"""
-    # Sort by 3-month return
+def create_sector_performance_table(sector_data: Dict[str, Dict]) -> Table:
     sorted_sectors = sorted(sector_data.items(), key=lambda x: x[1]['returns_3m'], reverse=True)
 
     table = Table(
@@ -189,8 +178,7 @@ def create_sector_performance_table(sector_data):
     return table
 
 
-def create_sector_leaders_table(sector, leaders_data):
-    """Create top companies table for a sector"""
+def create_sector_leaders_table(sector: str, leaders_data: List[Dict]) -> Table:
     table = Table(
         title=f"{sector.upper()} - MARKET LEADERS",
         box=box.SIMPLE_HEAVY,
@@ -237,9 +225,7 @@ def create_sector_leaders_table(sector, leaders_data):
     return table
 
 
-def create_rotation_panel(sector_data):
-    """Create sector rotation analysis panel"""
-    # Identify momentum sectors (1M vs 3M)
+def create_rotation_panel(sector_data: Dict[str, Dict]) -> Panel:
     momentum = []
     for sector, data in sector_data.items():
         if data['returns_1m'] > data['returns_3m']:
@@ -268,9 +254,7 @@ def create_rotation_panel(sector_data):
     return Panel(text, title="MOMENTUM ANALYSIS", border_style=THEME['border'], box=box.SQUARE, style=THEME['panel_bg'])
 
 
-def create_defensive_vs_cyclical(sector_data):
-    """Create defensive vs cyclical comparison"""
-    # Defensive sectors
+def create_defensive_vs_cyclical(sector_data: Dict[str, Dict]) -> Panel:
     defensive = ['Utilities', 'Consumer Staples', 'Healthcare']
     cyclical = ['Technology', 'Consumer Discretionary', 'Industrials', 'Materials']
 
@@ -298,8 +282,7 @@ def create_defensive_vs_cyclical(sector_data):
     return Panel(text, title="MARKET RISK APPETITE", border_style=THEME['border'], box=box.SQUARE, style=THEME['panel_bg'])
 
 
-def main():
-    """Main function"""
+def main() -> None:
     console.clear()
     console.print(create_header())
     console.print()

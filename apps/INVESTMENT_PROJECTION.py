@@ -1,27 +1,22 @@
 """
-INVESTMENT PROJECTION CALCULATOR
+Investment Projection Calculator
 What if you invest $X in a stock for Y years?
-
-Shows:
-- Future value based on historical returns
-- Conservative/Average/Optimistic scenarios
-- Year-by-year growth projection
-- Risk analysis
-- Comparison to market (S&P 500)
 """
+import sys
+import warnings
+from typing import Dict, List, Optional, Tuple, Any
+from datetime import datetime, timedelta
 
 import yfinance as yf
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich.text import Text
 from rich import box
 from rich.columns import Columns
-import sys
-import warnings
+
 warnings.filterwarnings('ignore')
 
 console = Console()
@@ -43,8 +38,7 @@ THEME = {
 
 
 
-def fetch_historical_returns(symbol, years=10):
-    """Fetch historical returns for projection"""
+def fetch_historical_returns(symbol: str, years: int = 10) -> Optional[Dict[str, Any]]:
     try:
         ticker = yf.Ticker(symbol)
 
@@ -101,8 +95,7 @@ def fetch_historical_returns(symbol, years=10):
         return None
 
 
-def calculate_projection(investment, annual_return, years):
-    """Calculate future value with compound interest"""
+def calculate_projection(investment: float, annual_return: float, years: int) -> Dict[str, float]:
     future_value = investment * ((1 + annual_return / 100) ** years)
     total_gain = future_value - investment
     total_return_pct = (total_gain / investment) * 100
@@ -114,8 +107,7 @@ def calculate_projection(investment, annual_return, years):
     }
 
 
-def project_year_by_year(investment, annual_return, years):
-    """Calculate year-by-year projection"""
+def project_year_by_year(investment: float, annual_return: float, years: int) -> List[Dict[str, float]]:
     projections = []
     current_value = investment
 
@@ -132,8 +124,7 @@ def project_year_by_year(investment, annual_return, years):
     return projections
 
 
-def create_header(symbol, name, investment, years):
-    """Create header panel"""
+def create_header(symbol: str, name: str, investment: float, years: int) -> Panel:
     text = Text()
     text.append("═" * 80, style="bright_green")
     text.append("\n")
@@ -152,8 +143,7 @@ def create_header(symbol, name, investment, years):
     return Panel(text, box=box.SQUARE, border_style=THEME['border'], padding=(1, 2), style=THEME['panel_bg'])
 
 
-def create_scenarios_panel(investment, data, years):
-    """Create scenarios panel"""
+def create_scenarios_panel(investment: float, data: Dict, years: int) -> Panel:
     text = Text()
 
     # Conservative (10th percentile or avg - 1 std dev)
@@ -206,8 +196,7 @@ def create_scenarios_panel(investment, data, years):
     )
 
 
-def create_historical_context_panel(data):
-    """Create historical context panel"""
+def create_historical_context_panel(data: Dict) -> Panel:
     text = Text()
 
     text.append("Historical Performance:\n\n", style="bold white")
@@ -252,8 +241,7 @@ def create_historical_context_panel(data):
     )
 
 
-def create_year_by_year_table(investment, data, years):
-    """Create year-by-year projection table"""
+def create_year_by_year_table(investment: float, data: Dict, years: int) -> Table:
     table = Table(
         title="[bold white on cyan] 📅 YEAR-BY-YEAR PROJECTION (AVERAGE SCENARIO) [/bold white on cyan]",
         box=box.SIMPLE_HEAVY,
@@ -297,8 +285,7 @@ def create_year_by_year_table(investment, data, years):
     return table
 
 
-def create_risk_analysis_panel(investment, data, years):
-    """Create risk analysis panel"""
+def create_risk_analysis_panel(investment: float, data: Dict, years: int) -> Panel:
     text = Text()
 
     # Calculate worst-case scenario
@@ -357,8 +344,7 @@ def create_risk_analysis_panel(investment, data, years):
     )
 
 
-def create_comparison_panel(investment, stock_data, years):
-    """Create comparison with S&P 500"""
+def create_comparison_panel(investment: float, stock_data: Dict, years: int) -> Panel:
     text = Text()
 
     # Fetch S&P 500 data
@@ -403,8 +389,7 @@ def create_comparison_panel(investment, stock_data, years):
     )
 
 
-def create_bottom_line_panel(investment, data, years):
-    """Create bottom line recommendation"""
+def create_bottom_line_panel(investment: float, data: Dict, years: int) -> Panel:
     text = Text()
 
     avg_projection = calculate_projection(investment, data['avg_return'], years)
@@ -446,8 +431,7 @@ def create_bottom_line_panel(investment, data, years):
     )
 
 
-def display_projection(symbol, investment, years):
-    """Display investment projection"""
+def display_projection(symbol: str, investment: float, years: int) -> None:
     console.clear()
     console.print(f"\n[cyan]Analyzing {symbol} historical returns...[/cyan]\n")
 
@@ -496,9 +480,7 @@ def display_projection(symbol, investment, years):
     console.print(footer)
 
 
-def main():
-    """Main function"""
-    # Get inputs
+def main() -> None:
     if len(sys.argv) >= 4:
         symbol = sys.argv[1].upper()
         try:

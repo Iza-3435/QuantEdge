@@ -1,21 +1,15 @@
 """
-DEEP DIVE RESEARCH SUMMARY
+Deep Dive Research Summary
 Comprehensive one-page research summary for investment analysis
-
-This tool provides:
-- Business quality metrics
-- Growth analysis
-- Valuation assessment
-- Catalysts and risks
-- Sentiment analysis
-- ML prediction
-- Clear investment conclusion
 """
+import sys
+import warnings
+from typing import Dict, List, Optional, Tuple, Any
+from datetime import datetime, timedelta
 
 import yfinance as yf
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -23,11 +17,9 @@ from rich.columns import Columns
 from rich.layout import Layout
 from rich import box
 from rich.text import Text
-import sys
-import warnings
+
 warnings.filterwarnings('ignore')
 
-# Try to import ML predictor
 try:
     from src.models.ensemble_predictor import EnsemblePredictor
     ML_AVAILABLE = True
@@ -48,8 +40,7 @@ COLORS = {
 }
 
 
-def get_comprehensive_data(symbol):
-    """Fetch all data needed for deep dive analysis"""
+def get_comprehensive_data(symbol: str) -> Optional[Dict[str, Any]]:
     try:
         ticker = yf.Ticker(symbol)
         info = ticker.info
@@ -133,8 +124,7 @@ def get_comprehensive_data(symbol):
         return None
 
 
-def calculate_rsi(df, period=14):
-    """Calculate RSI"""
+def calculate_rsi(df: pd.DataFrame, period: int = 14) -> float:
     try:
         delta = df['Close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
@@ -146,8 +136,7 @@ def calculate_rsi(df, period=14):
         return 50
 
 
-def get_quality_rating(value, metric_type):
-    """Get quality rating for a metric"""
+def get_quality_rating(value: float, metric_type: str) -> str:
     ratings = {
         'profit_margin': [(25, 'Excellent'), (15, 'Good'), (10, 'Fair'), (5, 'Poor')],
         'roe': [(20, 'Outstanding'), (15, 'Excellent'), (10, 'Good'), (5, 'Fair')],
@@ -184,8 +173,7 @@ def get_quality_rating(value, metric_type):
         return 'Poor'
 
 
-def get_color_for_rating(rating):
-    """Get color based on rating"""
+def get_color_for_rating(rating: str) -> str:
     if rating in ['Excellent', 'Outstanding', 'Cheap']:
         return COLORS['excellent']
     elif rating in ['Good', 'Fair']:
@@ -196,8 +184,7 @@ def get_color_for_rating(rating):
         return COLORS['critical']
 
 
-def create_business_quality_panel(data):
-    """Create business quality metrics panel"""
+def create_business_quality_panel(data: Dict) -> Panel:
     text = Text()
 
     # Profit Margin
@@ -242,8 +229,7 @@ def create_business_quality_panel(data):
     )
 
 
-def create_growth_panel(data):
-    """Create growth metrics panel"""
+def create_growth_panel(data: Dict) -> Panel:
     text = Text()
 
     # Revenue Growth
@@ -278,8 +264,7 @@ def create_growth_panel(data):
     )
 
 
-def create_valuation_panel(data):
-    """Create valuation metrics panel"""
+def create_valuation_panel(data: Dict) -> Panel:
     text = Text()
 
     # P/E Ratio
@@ -316,8 +301,7 @@ def create_valuation_panel(data):
     )
 
 
-def create_analyst_panel(data):
-    """Create analyst sentiment panel"""
+def create_analyst_panel(data: Dict) -> Panel:
     text = Text()
 
     # Target Price
@@ -357,8 +341,7 @@ def create_analyst_panel(data):
     )
 
 
-def create_technical_panel(data):
-    """Create technical analysis panel"""
+def create_technical_panel(data: Dict) -> Panel:
     text = Text()
 
     # RSI
@@ -405,8 +388,7 @@ def create_technical_panel(data):
     )
 
 
-def create_risks_panel(data):
-    """Create risks and concerns panel"""
+def create_risks_panel(data: Dict) -> Panel:
     risks = []
 
     # High valuation
@@ -447,8 +429,7 @@ def create_risks_panel(data):
     )
 
 
-def create_catalysts_panel(data):
-    """Create potential catalysts panel"""
+def create_catalysts_panel(data: Dict) -> Panel:
     catalysts = []
 
     # Strong growth
@@ -492,9 +473,7 @@ def create_catalysts_panel(data):
     )
 
 
-def create_bottom_line_panel(data):
-    """Create investment conclusion panel"""
-    # Calculate overall score
+def create_bottom_line_panel(data: Dict) -> Panel:
     score = 0
     max_score = 0
 
@@ -578,32 +557,23 @@ def create_bottom_line_panel(data):
     )
 
 
-def create_header(data):
-    """Create research summary header - Bloomberg minimal style"""
+def create_header(data: Dict) -> Text:
     header = Text()
 
-    # Simple top line
     header.append("━" * 80, style="white")
     header.append("\n")
-
-    # Title - no emoji, simple
     header.append(" RESEARCH SUMMARY | ", style="bold white")
     header.append(f"{data['symbol']}", style="bold white")
     header.append("\n")
     header.append("━" * 80, style="white")
     header.append("\n\n")
-
-    # Company info - clean, minimal
     header.append(f" {data['name']}", style="bold white")
     header.append(" | ", style="bright_black")
     header.append(f"{data['sector']}", style="white")
-
-    # Price with color
     header.append(" | $", style="bright_black")
     price_color = "green" if data.get('returns_1d', 0) >= 0 else "red"
     header.append(f"{data['current_price']:.2f}", style=f"{price_color}")
 
-    # Change
     if 'returns_1d' in data:
         change_symbol = "▲" if data['returns_1d'] >= 0 else "▼"
         header.append(f" {change_symbol}{abs(data['returns_1d']):.1f}%", style=price_color)
@@ -614,8 +584,7 @@ def create_header(data):
     return header
 
 
-def display_research_summary(symbol):
-    """Display comprehensive research summary"""
+def display_research_summary(symbol: str) -> None:
     console.clear()
     console.print(f"\n[cyan]Analyzing {symbol}...[/cyan]\n")
 
@@ -670,8 +639,7 @@ def display_research_summary(symbol):
     console.print(footer)
 
 
-def main():
-    """Main function"""
+def main() -> None:
     if len(sys.argv) < 2:
         console.print("\n[yellow]Usage:[/yellow] python RESEARCH_SUMMARY.py <SYMBOL>")
         console.print("\n[cyan]Example:[/cyan] python RESEARCH_SUMMARY.py AAPL\n")

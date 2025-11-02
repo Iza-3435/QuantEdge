@@ -1,26 +1,21 @@
 """
-EARNINGS CALENDAR
+Earnings Calendar
 Track upcoming earnings announcements and historical surprises
-
-Features:
-- Upcoming earnings dates (next 30 days)
-- EPS estimates vs actuals
-- Historical earnings surprises
-- Filter by sector, market cap
-- Earnings trends
 """
+import sys
+import warnings
+from typing import Dict, List, Optional, Tuple, Any
+from datetime import datetime, timedelta
 
 import yfinance as yf
 import pandas as pd
-from datetime import datetime, timedelta
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich.text import Text
 from rich import box
 from rich.columns import Columns
-import sys
-import warnings
+
 warnings.filterwarnings('ignore')
 
 console = Console()
@@ -66,8 +61,7 @@ TRACKING_STOCKS = [
 ]
 
 
-def get_earnings_data(symbol):
-    """Get earnings data for a symbol"""
+def get_earnings_data(symbol: str) -> Optional[Dict[str, Any]]:
     try:
         ticker = yf.Ticker(symbol)
         info = ticker.info
@@ -112,26 +106,20 @@ def get_earnings_data(symbol):
                         'surprise': (quarter.get('epsDifference', 0) / quarter.get('epsEstimate', 1) * 100) if quarter.get('epsEstimate') else 0
                     })
 
-                # Calculate price move after last earnings
                 try:
-                    # Get the date of last earnings
                     last_earnings_date = earnings.index[0]
                     if pd.notna(last_earnings_date):
-                        # Convert to datetime if needed
                         if hasattr(last_earnings_date, 'to_pydatetime'):
                             last_earnings_date = last_earnings_date.to_pydatetime()
 
-                        # Remove timezone info for comparison
                         if last_earnings_date.tzinfo is not None:
                             last_earnings_date = last_earnings_date.replace(tzinfo=None)
 
-                        # Get price data around earnings date
                         start_date = last_earnings_date - timedelta(days=3)
                         end_date = last_earnings_date + timedelta(days=3)
 
                         hist = ticker.history(start=start_date, end=end_date)
                         if not hist.empty and len(hist) >= 2:
-                            # Get close price before and after
                             before_price = None
                             after_price = None
 
@@ -179,8 +167,7 @@ def get_earnings_data(symbol):
         return None
 
 
-def create_header():
-    """Create header"""
+def create_header() -> Panel:
     header = Text()
     header.append("EARNINGS CALENDAR\n\n", style="bold white")
     header.append("Track Upcoming Earnings", style="white")
@@ -190,9 +177,7 @@ def create_header():
     return Panel(header, box=box.SQUARE, border_style=THEME['border'], padding=(1, 2), style=THEME['panel_bg'])
 
 
-def create_upcoming_table(earnings_data, days=30):
-    """Create upcoming earnings table"""
-    # Filter stocks with earnings in next N days
+def create_upcoming_table(earnings_data: List[Dict], days: int = 30) -> Table:
     now = datetime.now()
     cutoff = now + timedelta(days=days)
 
@@ -293,9 +278,7 @@ def create_upcoming_table(earnings_data, days=30):
     return table
 
 
-def create_sector_table(earnings_data):
-    """Create earnings by sector table"""
-    # Group by sector
+def create_sector_table(earnings_data: List[Dict]) -> Table:
     sectors = {}
     for data in earnings_data:
         if data and data['earnings_date']:
@@ -338,12 +321,8 @@ def create_sector_table(earnings_data):
     return table
 
 
-def create_surprise_leaders_table(earnings_data):
-    """Create earnings surprise leaders table"""
-    # Filter stocks with surprises
+def create_surprise_leaders_table(earnings_data: List[Dict]) -> Table:
     with_surprises = [d for d in earnings_data if d and d.get('last_surprise_pct')]
-
-    # Sort by surprise percentage
     with_surprises.sort(key=lambda x: x['last_surprise_pct'], reverse=True)
 
     table = Table(
@@ -377,12 +356,8 @@ def create_surprise_leaders_table(earnings_data):
     return table
 
 
-def create_eps_trend_table(earnings_data):
-    """Create EPS historical trend table for upcoming earnings"""
-    # Filter stocks with upcoming earnings and EPS history
+def create_eps_trend_table(earnings_data: List[Dict]) -> Optional[Table]:
     with_history = [d for d in earnings_data if d and d['earnings_date'] and d.get('eps_history')]
-
-    # Sort by date
     with_history.sort(key=lambda x: x['earnings_date'])
 
     if not with_history:
@@ -446,8 +421,7 @@ def create_eps_trend_table(earnings_data):
     return table
 
 
-def main():
-    """Main function"""
+def main() -> None:
     console.clear()
     console.print(create_header())
     console.print()

@@ -1,31 +1,25 @@
 """
-TECHNICAL SCREENER
+Technical Screener
 Find stocks with bullish technical setups
-
-Signals:
-- Golden Cross (50 SMA > 200 SMA)
-- 52-Week Breakout
-- RSI Oversold Bounce
-- Volume Spike
-- Price Momentum
 """
+import sys
+import warnings
+from typing import Dict, List, Optional, Tuple, Any
+from datetime import datetime, timedelta
 
 import yfinance as yf
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich.text import Text
 from rich import box
 from rich.columns import Columns
-import sys
-import warnings
-warnings.filterwarnings('ignore')
 
-# Import stock universe
 from stock_universe import SP500_STOCKS, create_progress_bar, get_status_indicator
+
+warnings.filterwarnings('ignore')
 
 console = Console()
 
@@ -48,8 +42,7 @@ THEME = {
 STOCK_UNIVERSE = SP500_STOCKS
 
 
-def get_technical_data(symbol):
-    """Get technical analysis data for a symbol"""
+def get_technical_data(symbol: str) -> Optional[Dict[str, Any]]:
     try:
         ticker = yf.Ticker(symbol)
         info = ticker.info
@@ -118,46 +111,38 @@ def get_technical_data(symbol):
         return None
 
 
-def check_golden_cross(data):
-    """Check for golden cross setup (50 SMA > 200 SMA)"""
+def check_golden_cross(data: Dict) -> Tuple[bool, float]:
     if data['sma_50'] > data['sma_200'] and data['price'] > data['sma_50']:
         strength = ((data['sma_50'] - data['sma_200']) / data['sma_200']) * 100
         return True, strength
     return False, 0
 
 
-def check_52w_breakout(data):
-    """Check for 52-week breakout"""
-    if data['pct_from_52w_high'] >= -2:  # Within 2% of 52W high
+def check_52w_breakout(data: Dict) -> Tuple[bool, float]:
+    if data['pct_from_52w_high'] >= -2:
         return True, abs(data['pct_from_52w_high'])
     return False, 0
 
 
-def check_rsi_bounce(data):
-    """Check for RSI oversold bounce"""
-    # Was oversold (RSI < 35) and now bouncing (RSI > 40)
+def check_rsi_bounce(data: Dict) -> Tuple[bool, float]:
     if data['rsi_prev'] < 35 and data['rsi'] > 40 and data['rsi'] < 60:
         return True, data['rsi']
     return False, 0
 
 
-def check_volume_spike(data):
-    """Check for volume spike"""
-    if data['volume_ratio'] > 1.5:  # 50% above average
+def check_volume_spike(data: Dict) -> Tuple[bool, float]:
+    if data['volume_ratio'] > 1.5:
         return True, data['volume_ratio']
     return False, 0
 
 
-def check_momentum(data):
-    """Check for strong momentum"""
-    # Strong 1M and 3M returns
+def check_momentum(data: Dict) -> Tuple[bool, float]:
     if data['returns_1m'] > 5 and data['returns_3m'] > 10:
         return True, data['returns_3m']
     return False, 0
 
 
-def scan_stocks():
-    """Scan all stocks for technical setups"""
+def scan_stocks() -> Dict[str, List[Dict]]:
     console.print("\n[white]Scanning stocks for technical setups...[/white]\n")
 
     results = {
@@ -197,9 +182,7 @@ def scan_stocks():
     return results
 
 
-def create_header():
-    """Create header"""
-    # Check if market is open (simple check: Mon-Fri, 9:30am-4pm ET)
+def create_header() -> Panel:
     now = datetime.now()
     is_weekday = now.weekday() < 5
     hour = now.hour
@@ -219,8 +202,7 @@ def create_header():
     return Panel(header, box=box.SQUARE, border_style=THEME['border'], padding=(1, 2), style=THEME['panel_bg'])
 
 
-def create_setup_table(stocks, title, description):
-    """Create table for a specific setup"""
+def create_setup_table(stocks: List[Dict], title: str, description: str) -> Panel:
     if not stocks:
         return Panel(
             f"[bright_black]No stocks found with this setup[/bright_black]",
@@ -285,8 +267,7 @@ def create_setup_table(stocks, title, description):
     )
 
 
-def create_summary_panel(results):
-    """Create summary of all setups"""
+def create_summary_panel(results: Dict[str, List]) -> Panel:
     text = Text()
     text.append("SCAN SUMMARY\n\n", style="bold white")
 
@@ -314,8 +295,7 @@ def create_summary_panel(results):
     return Panel(text, title="[bold white]SUMMARY[/bold white]", border_style=THEME['border'], box=box.SQUARE, style=THEME['panel_bg'])
 
 
-def main():
-    """Main function"""
+def main() -> None:
     console.clear()
     console.print(create_header())
     console.print()

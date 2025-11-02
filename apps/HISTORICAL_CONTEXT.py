@@ -1,27 +1,22 @@
 """
-HISTORICAL CONTEXT & TRENDS
+Historical Context
 See if current metrics are normal or unusual over 5-year period
-
-Shows:
-- P/E ratio trend (is it expensive vs history?)
-- Revenue growth trend (improving or declining?)
-- Margin trends (getting better or worse?)
-- Stock price trajectory
-- Context for all key metrics
 """
+import sys
+import warnings
+from typing import Dict, List, Optional, Tuple, Any
+from datetime import datetime, timedelta
 
 import yfinance as yf
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich.text import Text
 from rich import box
 from rich.columns import Columns
-import sys
-import warnings
+
 warnings.filterwarnings('ignore')
 
 console = Console()
@@ -43,8 +38,7 @@ THEME = {
 
 
 
-def fetch_historical_data(symbol):
-    """Fetch 5-year historical data"""
+def fetch_historical_data(symbol: str) -> Optional[Dict[str, Any]]:
     try:
         ticker = yf.Ticker(symbol)
 
@@ -138,8 +132,7 @@ def fetch_historical_data(symbol):
         return None
 
 
-def create_price_trend_panel(data):
-    """Create price trend analysis"""
+def create_price_trend_panel(data: Dict[str, Any]) -> Panel:
     text = Text()
 
     # Current price
@@ -175,8 +168,7 @@ def create_price_trend_panel(data):
     )
 
 
-def create_price_position_panel(data):
-    """Create price position analysis"""
+def create_price_position_panel(data: Dict[str, Any]) -> Panel:
     text = Text()
 
     # Distance from 52-week high
@@ -224,8 +216,7 @@ def create_price_position_panel(data):
     )
 
 
-def create_valuation_context_panel(data):
-    """Create valuation context"""
+def create_valuation_context_panel(data: Dict[str, Any]) -> Panel:
     text = Text()
 
     pe = data['current_pe']
@@ -271,8 +262,7 @@ def create_valuation_context_panel(data):
     )
 
 
-def create_growth_context_panel(data):
-    """Create growth context"""
+def create_growth_context_panel(data: Dict[str, Any]) -> Panel:
     text = Text()
 
     rev_growth = data['current_revenue_growth']
@@ -342,8 +332,7 @@ def create_growth_context_panel(data):
     )
 
 
-def create_historical_summary(data):
-    """Create historical summary panel"""
+def create_historical_summary(data: Dict[str, Any]) -> Panel:
     text = Text()
 
     # 5-year summary
@@ -395,8 +384,7 @@ def create_historical_summary(data):
     )
 
 
-def create_header(data):
-    """Create header"""
+def create_header(data: Dict[str, Any]) -> Panel:
     header = Text()
     header.append(f"HISTORICAL CONTEXT: {data['symbol']}\n\n", style="bold white")
     header.append(f"{data['name']}", style="white")
@@ -408,8 +396,7 @@ def create_header(data):
     return Panel(header, box=box.SQUARE, border_style=THEME['border'], padding=(1, 2), style=THEME['panel_bg'])
 
 
-def display_historical_context(symbol):
-    """Display historical context"""
+def display_historical_context(symbol: str) -> None:
     console.clear()
     console.print(f"\n[white]Analyzing {symbol} historical data...[/white]\n")
 
@@ -453,8 +440,7 @@ def display_historical_context(symbol):
     console.print(footer)
 
 
-def main():
-    """Main function"""
+def main() -> None:
     if len(sys.argv) < 2:
         console.print("\n[yellow]Usage:[/yellow] python HISTORICAL_CONTEXT.py <SYMBOL>")
         console.print("\n[white]Example:[/white] python HISTORICAL_CONTEXT.py AAPL\n")

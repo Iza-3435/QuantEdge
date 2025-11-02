@@ -1,22 +1,17 @@
 """
-LIVE BLOOMBERG-STYLE DASHBOARD
+Live Bloomberg-Style Dashboard
 Real-time auto-refreshing multi-pane terminal
-
-Features:
-- Auto-refresh every 5 seconds
-- Multi-pane layout (Market | Portfolio | Alerts)
-- Live price updates
-- Keyboard navigation
-- Real-time data streaming
 """
+import sys
+import time
+import sqlite3
+import threading
+from typing import Dict, List, Optional, Tuple, Any
+from datetime import datetime
 
 import yfinance as yf
-import sqlite3
 import pandas as pd
 import numpy as np
-from datetime import datetime
-import time
-import sys
 from rich.console import Console
 from rich.layout import Layout
 from rich.panel import Panel
@@ -24,7 +19,6 @@ from rich.table import Table
 from rich.live import Live
 from rich.text import Text
 from rich import box
-import threading
 
 console = Console()
 
@@ -44,8 +38,7 @@ THEME = {
 }
 
 
-def create_sparkline(prices, width=7):
-    """Create sparkline from price data"""
+def create_sparkline(prices: List[float], width: int = 7) -> str:
     if not prices or len(prices) < 2:
         return "━━━━━"
 
@@ -80,8 +73,7 @@ LIVE_DATA = {
 DB_PATH = 'investment_platform.db'
 
 
-def get_color(change_pct):
-    """Get color based on change intensity"""
+def get_color(change_pct: float) -> str:
     if change_pct > 0:
         return COLORS['up']
     elif change_pct < 0:
@@ -90,8 +82,7 @@ def get_color(change_pct):
         return COLORS['neutral']
 
 
-def fetch_market_data():
-    """Fetch real-time market data"""
+def fetch_market_data() -> Dict[str, Dict]:
     try:
         indices = {
             '^GSPC': 'S&P 500',
@@ -153,8 +144,7 @@ def fetch_market_data():
         return {}
 
 
-def fetch_portfolio_data():
-    """Fetch portfolio summary"""
+def fetch_portfolio_data() -> Optional[Dict[str, Any]]:
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -234,8 +224,7 @@ def fetch_portfolio_data():
         return None
 
 
-def fetch_alerts():
-    """Fetch active alerts"""
+def fetch_alerts() -> List[Dict[str, Any]]:
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -291,8 +280,7 @@ def fetch_alerts():
         return []
 
 
-def fetch_options_data(symbols=None):
-    """Fetch real-time options data for top portfolio stocks"""
+def fetch_options_data(symbols: Optional[List[str]] = None) -> Dict[str, Dict]:
     try:
         if not symbols:
             # Get symbols from portfolio
@@ -361,8 +349,7 @@ def fetch_options_data(symbols=None):
         return {}
 
 
-def create_market_panel(market_data):
-    """Create market overview panel"""
+def create_market_panel(market_data: Dict[str, Dict]) -> Panel:
     table = Table(
         box=box.SIMPLE,
         show_header=True,
@@ -405,8 +392,7 @@ def create_market_panel(market_data):
     )
 
 
-def create_portfolio_panel(portfolio_data):
-    """Create portfolio summary panel"""
+def create_portfolio_panel(portfolio_data: Optional[Dict]) -> Panel:
     if not portfolio_data:
         content = Text("No portfolio data\n\nAdd holdings in Portfolio Manager", style="bright_black")
     else:
@@ -441,8 +427,7 @@ def create_portfolio_panel(portfolio_data):
     )
 
 
-def create_alerts_panel(alerts):
-    """Create alerts panel"""
+def create_alerts_panel(alerts: List[Dict]) -> Panel:
     if not alerts:
         content = Text("✓ No active alerts\n\nAll clear!", style="green")
     else:
@@ -474,8 +459,7 @@ def create_alerts_panel(alerts):
     )
 
 
-def create_options_panel(options_data):
-    """Create options chain panel"""
+def create_options_panel(options_data: Dict[str, Dict]) -> Panel:
     if not options_data:
         content = Text("No options data available\n\nAdd stocks to portfolio to see options", style="bright_black")
         return Panel(
@@ -559,8 +543,7 @@ def create_options_panel(options_data):
     )
 
 
-def create_header():
-    """Create dashboard header"""
+def create_header() -> Panel:
     now = datetime.now()
     refresh_count = LIVE_DATA.get('refresh_count', 0)
 
@@ -583,8 +566,7 @@ def create_header():
     return Panel(header, box=box.SQUARE, border_style=THEME['border'], padding=(0, 2), style=THEME['panel_bg'])
 
 
-def create_footer():
-    """Create footer with controls"""
+def create_footer() -> Panel:
     footer = Text()
     footer.append("Auto-refresh: ", style="bright_black")
     footer.append("ON", style="bright_green")
@@ -596,8 +578,7 @@ def create_footer():
     return Panel(footer, box=box.SQUARE, border_style=THEME['border'], style=THEME['panel_bg'])
 
 
-def create_dashboard_layout():
-    """Create the multi-pane layout"""
+def create_dashboard_layout() -> Layout:
     layout = Layout()
 
     # Main structure
@@ -623,8 +604,7 @@ def create_dashboard_layout():
     return layout
 
 
-def update_dashboard_data():
-    """Background worker to fetch fresh data"""
+def update_dashboard_data() -> None:
     while True:
         try:
             # Fetch all data
@@ -648,8 +628,7 @@ def update_dashboard_data():
         time.sleep(5)
 
 
-def render_dashboard():
-    """Render the complete dashboard"""
+def render_dashboard() -> Layout:
     layout = create_dashboard_layout()
 
     # Update each section
@@ -663,8 +642,7 @@ def render_dashboard():
     return layout
 
 
-def main():
-    """Main live dashboard"""
+def main() -> None:
     console.clear()
 
     # Show loading message

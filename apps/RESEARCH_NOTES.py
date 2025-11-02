@@ -1,19 +1,13 @@
 """
-RESEARCH NOTES & BOOKMARKS SYSTEM
+Research Notes & Bookmarks System
 Save investment thesis, bookmark findings, track research progress
-
-Features:
-- Add research notes for any stock
-- Bookmark important metrics/news
-- Tag concerns and opportunities
-- View all research in one place
-- Export notes to markdown
-- Search through notes
 """
-
-import sqlite3
 import sys
+import sqlite3
+import json
+from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime
+
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -21,7 +15,6 @@ from rich.text import Text
 from rich import box
 from rich.prompt import Prompt, Confirm
 from rich.columns import Columns
-import json
 
 console = Console()
 
@@ -43,8 +36,7 @@ THEME = {
 }
 
 
-def init_research_db():
-    """Initialize research notes database"""
+def init_research_db() -> None:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
@@ -78,8 +70,7 @@ def init_research_db():
     conn.close()
 
 
-def add_note(symbol, note_type, content, tags=None):
-    """Add a research note"""
+def add_note(symbol: str, note_type: str, content: str, tags: Optional[str] = None) -> int:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
@@ -95,8 +86,7 @@ def add_note(symbol, note_type, content, tags=None):
     return note_id
 
 
-def add_bookmark(symbol, bookmark_type, title, value=None, notes=None):
-    """Add a bookmark"""
+def add_bookmark(symbol: str, bookmark_type: str, title: str, value: Optional[str] = None, notes: Optional[str] = None) -> int:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
@@ -112,8 +102,7 @@ def add_bookmark(symbol, bookmark_type, title, value=None, notes=None):
     return bookmark_id
 
 
-def get_notes_for_symbol(symbol):
-    """Get all notes for a symbol"""
+def get_notes_for_symbol(symbol: str) -> List[Tuple]:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
@@ -130,8 +119,7 @@ def get_notes_for_symbol(symbol):
     return notes
 
 
-def get_bookmarks_for_symbol(symbol):
-    """Get all bookmarks for a symbol"""
+def get_bookmarks_for_symbol(symbol: str) -> List[Tuple]:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
@@ -148,8 +136,7 @@ def get_bookmarks_for_symbol(symbol):
     return bookmarks
 
 
-def get_all_researched_stocks():
-    """Get list of all stocks with research"""
+def get_all_researched_stocks() -> List[str]:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
@@ -168,8 +155,7 @@ def get_all_researched_stocks():
     return stocks
 
 
-def delete_note(note_id):
-    """Delete a note"""
+def delete_note(note_id: int) -> None:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("DELETE FROM research_notes WHERE id = ?", (note_id,))
@@ -177,8 +163,7 @@ def delete_note(note_id):
     conn.close()
 
 
-def delete_bookmark(bookmark_id):
-    """Delete a bookmark"""
+def delete_bookmark(bookmark_id: int) -> None:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("DELETE FROM research_bookmarks WHERE id = ?", (bookmark_id,))
@@ -186,8 +171,7 @@ def delete_bookmark(bookmark_id):
     conn.close()
 
 
-def export_notes_to_markdown(symbol):
-    """Export research notes to markdown file"""
+def export_notes_to_markdown(symbol: str) -> Optional[str]:
     notes = get_notes_for_symbol(symbol)
     bookmarks = get_bookmarks_for_symbol(symbol)
 
@@ -258,8 +242,7 @@ def export_notes_to_markdown(symbol):
     return filename
 
 
-def create_header():
-    """Create header"""
+def create_header() -> Panel:
     header = Text()
     header.append("RESEARCH NOTES & BOOKMARKS\n\n", style="bold white")
     header.append("Build Your Investment Thesis", style="white")
@@ -271,8 +254,7 @@ def create_header():
     return Panel(header, box=box.SQUARE, border_style=THEME['border'], padding=(1, 2), style=THEME['panel_bg'])
 
 
-def display_stock_research(symbol):
-    """Display all research for a stock"""
+def display_stock_research(symbol: str) -> None:
     console.clear()
     console.print()
 
@@ -334,8 +316,7 @@ def display_stock_research(symbol):
         console.print()
 
 
-def interactive_add_note(symbol):
-    """Interactive note addition"""
+def interactive_add_note(symbol: str) -> None:
     console.print(f"\n[bold white]Add Research Note for {symbol}[/bold white]\n")
 
     # Note type
@@ -368,8 +349,7 @@ def interactive_add_note(symbol):
     console.print(f"\n[green]✓ Note saved (ID: {note_id})[/green]\n")
 
 
-def interactive_add_bookmark(symbol):
-    """Interactive bookmark addition"""
+def interactive_add_bookmark(symbol: str) -> None:
     console.print(f"\n[bold white]Add Bookmark for {symbol}[/bold white]\n")
 
     # Bookmark type
@@ -411,8 +391,7 @@ def interactive_add_bookmark(symbol):
     console.print(f"\n[green]✓ Bookmark saved (ID: {bookmark_id})[/green]\n")
 
 
-def main_menu():
-    """Main research notes menu"""
+def main_menu() -> None:
     init_research_db()
 
     while True:
