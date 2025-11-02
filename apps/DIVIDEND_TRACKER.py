@@ -23,6 +23,7 @@ from rich.columns import Columns
 from rich.prompt import Prompt
 import sys
 import warnings
+from typing import Dict, List, Optional, Any
 warnings.filterwarnings('ignore')
 
 console = Console()
@@ -43,8 +44,19 @@ THEME = {
 }
 
 
-def create_progress_bar(value, max_value=10, width=12, show_percentage=False):
-    """Create a visual progress bar"""
+def create_progress_bar(value: float, max_value: float = 10, width: int = 12, show_percentage: bool = False) -> str:
+    """
+    Create a visual progress bar for metrics display.
+
+    Args:
+        value: Current value
+        max_value: Maximum value for the bar scale
+        width: Width of the bar in characters
+        show_percentage: Whether to show percentage after the bar
+
+    Returns:
+        Formatted progress bar string
+    """
     if max_value == 0:
         max_value = 1
 
@@ -72,13 +84,21 @@ DIVIDEND_STOCKS = [
 ]
 
 
-def get_dividend_data(symbol):
-    """Get dividend data for a symbol"""
+def get_dividend_data(symbol: str) -> Optional[Dict[str, Any]]:
+    """
+    Fetch comprehensive dividend data for a stock symbol.
+
+    Args:
+        symbol: Stock ticker symbol
+
+    Returns:
+        Dictionary with dividend data or None if fetch fails
+    """
     try:
         ticker = yf.Ticker(symbol)
         info = ticker.info
 
-        data = {
+        data: Dict[str, Any] = {
             'symbol': symbol,
             'name': info.get('shortName', symbol)[:25],
             'sector': info.get('sector', 'N/A')[:20],
@@ -162,8 +182,13 @@ def get_dividend_data(symbol):
         return None
 
 
-def create_header():
-    """Create header"""
+def create_header() -> Panel:
+    """
+    Create header panel for dividend tracker.
+
+    Returns:
+        Rich Panel with header information
+    """
     header = Text()
     header.append("DIVIDEND TRACKER & CALENDAR\n\n", style="bold white")
     header.append("Income Investing Dashboard", style="white")
@@ -173,8 +198,16 @@ def create_header():
     return Panel(header, box=box.SQUARE, border_style=THEME['border'], padding=(1, 2), style=THEME['panel_bg'])
 
 
-def create_top_yields_table(dividend_data):
-    """Create top dividend yields table"""
+def create_top_yields_table(dividend_data: List[Dict[str, Any]]) -> Table:
+    """
+    Create top dividend yields ranking table.
+
+    Args:
+        dividend_data: List of dividend data dictionaries
+
+    Returns:
+        Rich Table with top dividend yields
+    """
     # Sort by yield
     sorted_data = sorted(
         [d for d in dividend_data if d and d['dividend_yield'] > 0],
@@ -234,17 +267,23 @@ def create_top_yields_table(dividend_data):
     return table
 
 
-def create_upcoming_ex_dates_table(dividend_data):
-    """Create upcoming ex-dividend dates table"""
-    # Filter stocks with upcoming ex-dates
+def create_upcoming_ex_dates_table(dividend_data: List[Dict[str, Any]]) -> Panel | Table:
+    """
+    Create upcoming ex-dividend dates table.
+
+    Args:
+        dividend_data: List of dividend data dictionaries
+
+    Returns:
+        Rich Table or Panel with upcoming ex-dividend dates
+    """
     upcoming = []
     for data in dividend_data:
         if data and data.get('days_until_ex') is not None:
             days = data['days_until_ex']
-            if 0 <= days <= 60:  # Next 60 days
+            if 0 <= days <= 60:
                 upcoming.append(data)
 
-    # Sort by days until
     upcoming.sort(key=lambda x: x['days_until_ex'])
 
     if not upcoming:
@@ -295,12 +334,17 @@ def create_upcoming_ex_dates_table(dividend_data):
     return table
 
 
-def create_growth_leaders_table(dividend_data):
-    """Create dividend growth leaders table"""
-    # Filter stocks with growth data
-    with_growth = [d for d in dividend_data if d and d.get('div_growth_5y')]
+def create_growth_leaders_table(dividend_data: List[Dict[str, Any]]) -> Table:
+    """
+    Create dividend growth leaders table (5-year CAGR).
 
-    # Sort by 5-year growth
+    Args:
+        dividend_data: List of dividend data dictionaries
+
+    Returns:
+        Rich Table with dividend growth leaders
+    """
+    with_growth = [d for d in dividend_data if d and d.get('div_growth_5y')]
     with_growth.sort(key=lambda x: x['div_growth_5y'], reverse=True)
 
     table = Table(
@@ -333,10 +377,17 @@ def create_growth_leaders_table(dividend_data):
     return table
 
 
-def create_sector_yields_table(dividend_data):
-    """Create average yields by sector"""
-    # Group by sector
-    sectors = {}
+def create_sector_yields_table(dividend_data: List[Dict[str, Any]]) -> Table:
+    """
+    Create average dividend yields by sector table.
+
+    Args:
+        dividend_data: List of dividend data dictionaries
+
+    Returns:
+        Rich Table with sector yield averages
+    """
+    sectors: Dict[str, List[float]] = {}
     for data in dividend_data:
         if data and data['dividend_yield'] > 0:
             sector = data['sector']
@@ -344,7 +395,6 @@ def create_sector_yields_table(dividend_data):
                 sectors[sector] = []
             sectors[sector].append(data['dividend_yield'])
 
-    # Calculate averages
     sector_avgs = [(sector, sum(yields) / len(yields)) for sector, yields in sectors.items()]
     sector_avgs.sort(key=lambda x: x[1], reverse=True)
 
@@ -374,12 +424,17 @@ def create_sector_yields_table(dividend_data):
     return table
 
 
-def create_dividend_aristocrats_table(dividend_data):
-    """Create dividend aristocrats and achievers table"""
-    # Filter stocks with streaks
-    with_streaks = [d for d in dividend_data if d and d.get('dividend_streak', 0) >= 10]
+def create_dividend_aristocrats_table(dividend_data: List[Dict[str, Any]]) -> Optional[Table]:
+    """
+    Create dividend aristocrats and achievers table.
 
-    # Sort by streak length
+    Args:
+        dividend_data: List of dividend data dictionaries
+
+    Returns:
+        Rich Table with aristocrats/achievers or None if none found
+    """
+    with_streaks = [d for d in dividend_data if d and d.get('dividend_streak', 0) >= 10]
     with_streaks.sort(key=lambda x: x['dividend_streak'], reverse=True)
 
     if not with_streaks:
@@ -405,15 +460,15 @@ def create_dividend_aristocrats_table(dividend_data):
     for stock in with_streaks:
         streak = stock['dividend_streak']
 
-        # Status badge
+        # Status badge (professional, no emojis)
         if stock.get('is_aristocrat'):
-            status = "🏆 ELITE"
+            status = "ELITE"
             status_color = "bright_green"
         elif stock.get('is_achiever'):
-            status = "⭐ STRONG"
+            status = "STRONG"
             status_color = "green"
         else:
-            status = "✓"
+            status = "GOOD"
             status_color = "white"
 
         # Streak color
@@ -440,8 +495,13 @@ def create_dividend_aristocrats_table(dividend_data):
     return table
 
 
-def create_drip_calculator():
-    """Create DRIP projection panel"""
+def create_drip_calculator() -> Panel:
+    """
+    Create DRIP projection info panel.
+
+    Returns:
+        Rich Panel with DRIP calculator information
+    """
     text = Text()
     text.append("DIVIDEND REINVESTMENT CALCULATOR\n\n", style="bold white")
     text.append("Calculate income from dividend stocks:\n\n", style="white")
@@ -461,16 +521,17 @@ def create_drip_calculator():
     return Panel(text, title="INCOME PROJECTIONS", border_style=THEME['border'], box=box.SQUARE, style=THEME['panel_bg'])
 
 
-def main():
-    """Main function"""
+def main() -> None:
+    """
+    Main entry point for dividend tracker application.
+    """
     console.clear()
     console.print(create_header())
     console.print()
 
-    # Fetch dividend data
     console.print(f"[white]Loading dividend data for {len(DIVIDEND_STOCKS)} stocks...[/white]")
 
-    dividend_data = []
+    dividend_data: List[Dict[str, Any]] = []
     for symbol in DIVIDEND_STOCKS:
         data = get_dividend_data(symbol)
         if data:
@@ -505,9 +566,8 @@ def main():
     console.print(create_drip_calculator())
     console.print()
 
-    # Footer
     footer = Panel(
-        f"[bright_black]Tracking {len(DIVIDEND_STOCKS)} stocks │ 🏆 Elite = 25+ years │ ⭐ Strong = 10+ years │ Updated {datetime.now().strftime('%I:%M %p')}[/bright_black]",
+        f"[bright_black]Tracking {len(DIVIDEND_STOCKS)} stocks │ Elite = 25+ years │ Strong = 10+ years │ Updated {datetime.now().strftime('%I:%M %p')}[/bright_black]",
         box=box.SQUARE,
         border_style=THEME['border'],
         style=THEME['panel_bg']
