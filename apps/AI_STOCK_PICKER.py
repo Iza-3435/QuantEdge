@@ -8,6 +8,8 @@ Analyzes stocks based on fundamentals, growth metrics, and risk profiles.
 
 import warnings
 from typing import Dict, List, Optional, Any, Tuple
+import sys
+import os
 
 import yfinance as yf
 import pandas as pd
@@ -23,9 +25,12 @@ from rich.columns import Columns
 
 warnings.filterwarnings('ignore')
 
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from stock_universe import SECTORS, DIVIDEND_ARISTOCRATS, HIGH_GROWTH_TECH, MEGA_CAPS
+from src.ml_engine import AdvancedMLScorer
 
 console = Console()
+ml_scorer = AdvancedMLScorer()
 
 COLORS = {
     'up': 'green',
@@ -152,11 +157,11 @@ def get_user_preferences() -> Dict[str, Any]:
     """
     console.print("[bold white]Let's build your optimal portfolio![/bold white]\n")
 
-    console.print("[white]💰 Investment Budget[/white]")
+    console.print("[white]Investment Budget[/white]")
     budget = IntPrompt.ask("How much do you want to invest?", default=10000)
     console.print()
 
-    console.print("[white]📊 Investment Interests (Select areas you're interested in)[/white]\n")
+    console.print("[white]Investment Interests (Select areas you're interested in)[/white]\n")
 
     for key, value in STOCK_CATEGORIES.items():
         stock_count = len(value['stocks'])
@@ -173,7 +178,7 @@ def get_user_preferences() -> Dict[str, Any]:
 
     console.print()
 
-    console.print("[white]⚖️  Risk Tolerance[/white]\n")
+    console.print("[white]Risk Tolerance[/white]\n")
     console.print("  [white]conservative[/white] - Low risk, focus on stable dividends")
     console.print("  [white]moderate[/white] - Balanced growth and stability")
     console.print("  [white]aggressive[/white] - High growth, higher volatility")
@@ -182,7 +187,7 @@ def get_user_preferences() -> Dict[str, Any]:
     risk = Prompt.ask("Risk level", choices=['conservative', 'moderate', 'aggressive'], default='moderate')
     console.print()
 
-    console.print("[white]📅 Investment Timeline[/white]")
+    console.print("[white]Investment Timeline[/white]")
     timeline = IntPrompt.ask("How many years do you plan to hold?", default=10)
     console.print()
 
@@ -195,15 +200,7 @@ def get_user_preferences() -> Dict[str, Any]:
 
 
 def fetch_stock_data(symbol: str) -> Optional[Dict[str, Any]]:
-    """
-    Fetch stock metrics for analysis.
-
-    Args:
-        symbol: Stock ticker symbol
-
-    Returns:
-        Dictionary containing stock data and metrics, or None if fetch fails
-    """
+    """Fetch stock metrics and ML features for analysis"""
     try:
         ticker = yf.Ticker(symbol)
         info = ticker.info
@@ -216,18 +213,42 @@ def fetch_stock_data(symbol: str) -> Optional[Dict[str, Any]]:
         price_1y_ago = hist['Close'].iloc[0]
         returns_1y = ((current_price - price_1y_ago) / price_1y_ago * 100)
 
+        prices = hist['Close']
+        rsi = 50
+        if len(prices) >= 14:
+            delta = prices.diff()
+            gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+            rs = gain / loss
+            rsi = (100 - (100 / (1 + rs))).iloc[-1] if not rs.iloc[-1] == 0 else 50
+
         return {
             'symbol': symbol,
             'name': info.get('shortName', symbol),
             'price': current_price,
             'market_cap': info.get('marketCap', 0),
+            'pe_ratio': info.get('trailingPE', 0),
             'pe': info.get('trailingPE', 0),
+            'forward_pe': info.get('forwardPE', 0),
+            'peg_ratio': info.get('pegRatio', 0),
+            'price_to_book': info.get('priceToBook', 0),
+            'price_to_sales': info.get('priceToSalesTrailing12Months', 0),
             'dividend_yield': info.get('dividendYield', 0) * 100 if info.get('dividendYield') else 0,
             'profit_margin': info.get('profitMargins', 0) * 100 if info.get('profitMargins') else 0,
+            'operating_margin': info.get('operatingMargins', 0) * 100 if info.get('operatingMargins') else 0,
             'roe': info.get('returnOnEquity', 0) * 100 if info.get('returnOnEquity') else 0,
+            'roa': info.get('returnOnAssets', 0) * 100 if info.get('returnOnAssets') else 0,
+            'debt_to_equity': info.get('debtToEquity', 0) / 100 if info.get('debtToEquity') else 0,
             'debt_equity': info.get('debtToEquity', 0) / 100 if info.get('debtToEquity') else 0,
+            'current_ratio': info.get('currentRatio', 0),
             'revenue_growth': info.get('revenueGrowth', 0) * 100 if info.get('revenueGrowth') else 0,
+            'earnings_growth': info.get('earningsGrowth', 0) * 100 if info.get('earningsGrowth') else 0,
+            'free_cash_flow': info.get('freeCashflow', 0),
+            'operating_cash_flow': info.get('operatingCashflow', 0),
+            'rsi': rsi,
             'returns_1y': returns_1y,
+            'momentum_score': min(max(returns_1y, 0), 100),
+            'piotroski_score': 5,
             'beta': info.get('beta', 1.0),
             'recommendation': info.get('recommendationKey', 'hold').upper(),
         }
@@ -236,78 +257,24 @@ def fetch_stock_data(symbol: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def score_stock(stock: Dict[str, Any], risk_profile: str, preferences: Dict[str, Any]) -> int:
-    """
-    Score a stock based on quality, growth, valuation, and risk criteria.
+def score_stock(stock: Dict[str, Any], risk_profile: str, preferences: Dict[str, Any]) -> Tuple[int, str, float]:
+    """Score stock using advanced ML ensemble methods"""
+    ml_result = ml_scorer.score_stock(stock)
 
-    Args:
-        stock: Stock data dictionary
-        risk_profile: User's risk tolerance (conservative, moderate, aggressive)
-        preferences: User preferences dictionary
-
-    Returns:
-        Score from 0-100
-    """
-    score = 0
-
-    if stock['profit_margin'] > 20:
-        score += 15
-    elif stock['profit_margin'] > 10:
-        score += 10
-    elif stock['profit_margin'] > 5:
-        score += 5
-
-    if stock['roe'] > 20:
-        score += 10
-    elif stock['roe'] > 15:
-        score += 5
-
-    if stock['debt_equity'] < 0.5:
-        score += 5
-
-    if stock['returns_1y'] > 30:
-        score += 15
-    elif stock['returns_1y'] > 15:
-        score += 10
-    elif stock['returns_1y'] > 0:
-        score += 5
-
-    if stock['revenue_growth'] > 15:
-        score += 10
-    elif stock['revenue_growth'] > 5:
-        score += 5
-
-    if 0 < stock['pe'] < 20:
-        score += 15
-    elif 0 < stock['pe'] < 30:
-        score += 10
-    elif 0 < stock['pe'] < 40:
-        score += 5
-
-    if stock['market_cap'] > 100_000_000_000:
-        score += 5
+    base_score = ml_result.score
 
     if risk_profile == 'conservative':
         if stock['dividend_yield'] > 2:
-            score += 15
-        elif stock['dividend_yield'] > 1:
-            score += 10
+            base_score = min(base_score + 5, 100)
         if stock['beta'] < 1.0:
-            score += 10
+            base_score = min(base_score + 5, 100)
     elif risk_profile == 'aggressive':
         if stock['returns_1y'] > 20:
-            score += 15
+            base_score = min(base_score + 5, 100)
         if stock['revenue_growth'] > 15:
-            score += 10
+            base_score = min(base_score + 5, 100)
 
-    if stock['recommendation'] == 'STRONG_BUY':
-        score += 10
-    elif stock['recommendation'] == 'BUY':
-        score += 7
-    elif stock['recommendation'] == 'HOLD':
-        score += 3
-
-    return min(score, 100)
+    return int(base_score), ml_result.signal, ml_result.confidence
 
 
 def calculate_optimal_allocation(stocks: List[Dict[str, Any]], budget: float, risk_profile: str) -> Tuple[List[Dict[str, Any]], float]:
@@ -340,6 +307,8 @@ def calculate_optimal_allocation(stocks: List[Dict[str, Any]], budget: float, ri
             'name': stock['name'],
             'price': stock['price'],
             'score': stock['score'],
+            'ml_signal': stock.get('ml_signal', 'HOLD'),
+            'ml_confidence': stock.get('ml_confidence', 0.5),
             'allocation_pct': allocation_pct,
             'amount': (allocation_pct / 100) * investable,
             'shares': int((allocation_pct / 100) * investable / stock['price']),
@@ -360,9 +329,9 @@ def calculate_optimal_allocation(stocks: List[Dict[str, Any]], budget: float, ri
 
 
 def create_allocation_table(allocations: List[Dict[str, Any]]) -> Table:
-    """Create portfolio allocation table."""
+    """Create portfolio allocation table with ML signals"""
     table = Table(
-        title="AI-RECOMMENDED PORTFOLIO",
+        title="AI-RECOMMENDED PORTFOLIO (ML-POWERED)",
         box=box.SIMPLE_HEAVY,
         show_header=True,
         header_style=f"bold white {THEME['header_bg']}",
@@ -372,24 +341,27 @@ def create_allocation_table(allocations: List[Dict[str, Any]]) -> Table:
     )
 
     table.add_column("Stock", style="white", width=8)
-    table.add_column("Company", style="white", width=20)
+    table.add_column("Company", style="white", width=18)
     table.add_column("Score", style="white", justify="center", width=8)
-    table.add_column("Allocation", style="white", justify="right", width=12)
-    table.add_column("Amount", style="white", justify="right", width=12)
-    table.add_column("Shares", style="white", justify="right", width=8)
-    table.add_column("Price", style="bright_black", justify="right", width=10)
+    table.add_column("Signal", style="white", justify="center", width=12)
+    table.add_column("Allocation", style="white", justify="right", width=10)
+    table.add_column("Amount", style="white", justify="right", width=11)
+    table.add_column("Shares", style="white", justify="right", width=7)
 
     for alloc in allocations:
         score_color = "bright_green" if alloc['score'] > 70 else "green" if alloc['score'] > 50 else "white"
 
+        signal = alloc.get('ml_signal', 'HOLD')
+        signal_color = "bright_green" if 'BUY' in signal else "green" if signal == 'HOLD' else "red"
+
         table.add_row(
             alloc['symbol'],
-            alloc['name'][:20],
+            alloc['name'][:18],
             f"[{score_color}]{alloc['score']}/100[/{score_color}]",
+            f"[{signal_color}]{signal}[/{signal_color}]",
             f"{alloc['allocation_pct']:.1f}%",
             f"${alloc['amount']:,.0f}",
-            str(alloc['shares']),
-            f"${alloc['price']:.2f}"
+            str(alloc['shares'])
         )
 
     return table
@@ -510,7 +482,7 @@ def main() -> None:
 
     prefs = get_user_preferences()
 
-    console.print("[white]🤖 AI is analyzing stocks in your selected areas...[/white]\n")
+    console.print("[white]AI is analyzing stocks in your selected areas...[/white]\n")
 
     all_stocks = {}
     for area in prefs['areas']:
@@ -521,7 +493,10 @@ def main() -> None:
         console.print(f"  Analyzing {symbol}...", style="bright_black")
         data = fetch_stock_data(symbol)
         if data:
-            data['score'] = score_stock(data, prefs['risk'], prefs)
+            score, signal, confidence = score_stock(data, prefs['risk'], prefs)
+            data['score'] = score
+            data['ml_signal'] = signal
+            data['ml_confidence'] = confidence
             stocks_data.append(data)
 
     if not stocks_data:

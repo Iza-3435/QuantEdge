@@ -380,7 +380,7 @@ def create_market_panel(market_data: Dict[str, Dict]) -> Panel:
 
     # Add live indicator
     source = list(market_data.values())[0].get('source') if market_data else 'none'
-    live_indicator = " LIVE" if source == 'realtime' else " DELAYED"
+    live_indicator = "LIVE" if source == 'realtime' else "DELAYED"
 
     title = f"[bold white on cyan] MARKET {live_indicator} [/bold white on cyan]"
 
@@ -421,7 +421,7 @@ def create_portfolio_panel(portfolio_data: Optional[Dict]) -> Panel:
 
     return Panel(
         content,
-        title="[bold white on green] PORTFOLIO 💼 [/bold white on green]",
+        title="[bold white on green] PORTFOLIO [/bold white on green]",
         border_style=THEME['border'],
         padding=(1, 1), style=THEME['panel_bg']
     )
@@ -443,7 +443,7 @@ def create_alerts_panel(alerts: List[Dict]) -> Panel:
             }
 
             color = severity_colors.get(alert['severity'], 'white')
-            icon = '🚨' if alert['severity'] == 'critical' else '✓' if alert['severity'] == 'success' else ''
+            icon = 'Alert:' if alert['severity'] == 'critical' else 'OK:' if alert['severity'] == 'success' else ''
 
             content.append(f"{icon} ", style=color)
             content.append(f"{alert['message']}\n", style=color)
@@ -453,7 +453,7 @@ def create_alerts_panel(alerts: List[Dict]) -> Panel:
 
     return Panel(
         content,
-        title="[bold white on red] ALERTS 🔔 [/bold white on red]",
+        title="[bold white on red] ALERTS [/bold white on red]",
         border_style=THEME['border'],
         padding=(1, 1), style=THEME['panel_bg']
     )
@@ -464,7 +464,7 @@ def create_options_panel(options_data: Dict[str, Dict]) -> Panel:
         content = Text("No options data available\n\nAdd stocks to portfolio to see options", style="bright_black")
         return Panel(
             content,
-            title="[bold white] OPTIONS CHAIN 📊 [/bold white]",
+            title="[bold white] OPTIONS CHAIN [/bold white]",
             border_style=THEME['border'],
             padding=(1, 1),
             style=THEME['panel_bg']
@@ -536,7 +536,7 @@ def create_options_panel(options_data: Dict[str, Dict]) -> Panel:
 
     return Panel(
         final_content,
-        title="[bold white] OPTIONS CHAIN 📊 [/bold white]",
+        title="[bold white] OPTIONS CHAIN [/bold white]",
         border_style=THEME['border'],
         padding=(0, 1),
         style=THEME['panel_bg']
@@ -551,7 +551,7 @@ def create_header() -> Panel:
     header.append("═" * 80, style="bright_blue")
     header.append("\n")
     header.append("              ", style="bright_blue")
-    header.append("  LIVE BLOOMBERG-STYLE DASHBOARD  ", style="bold white on blue")
+    header.append(" LIVE BLOOMBERG-STYLE DASHBOARD ", style="bold white on blue")
     header.append("\n", style="bright_blue")
     header.append("═" * 80, style="bright_blue")
     header.append("\n\n")

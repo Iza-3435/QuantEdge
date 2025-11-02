@@ -27,8 +27,10 @@ from src.ui_enhancements import (
     create_enhanced_sparkline, create_progress_bar, get_recommendation_indicator,
     format_percentage, create_score_badge
 )
+from src.ml_engine import AdvancedMLScorer
 
 console = Console()
+ml_scorer = AdvancedMLScorer()
 
 COLORS = {
     'up': 'green',
@@ -196,7 +198,7 @@ def fetch_stock_metrics(symbol: str) -> Optional[Dict[str, Any]]:
         piotroski = calculate_piotroski_score(fundamentals)
         altman = calculate_altman_z_score(fundamentals)
 
-        return {
+        stock_data = {
             'symbol': symbol,
             'name': info.get('longName', symbol),
             'price': current_price,
@@ -209,13 +211,24 @@ def fetch_stock_metrics(symbol: str) -> Optional[Dict[str, Any]]:
             'sharpe': sharpe,
             'beta': info.get('beta', 0),
             'pe': info.get('trailingPE', 0),
+            'pe_ratio': info.get('trailingPE', 0),
             'forward_pe': info.get('forwardPE', 0),
+            'peg_ratio': info.get('pegRatio', 0),
+            'price_to_book': info.get('priceToBook', 0),
+            'price_to_sales': info.get('priceToSalesTrailing12Months', 0),
             'pb': info.get('priceToBook', 0),
             'ps': info.get('priceToSalesTrailing12Months', 0),
             'profit_margin': info.get('profitMargins', 0) * 100 if info.get('profitMargins') else 0,
+            'operating_margin': info.get('operatingMargins', 0) * 100 if info.get('operatingMargins') else 0,
             'roe': info.get('returnOnEquity', 0) * 100 if info.get('returnOnEquity') else 0,
             'roa': info.get('returnOnAssets', 0) * 100 if info.get('returnOnAssets') else 0,
             'debt_equity': info.get('debtToEquity', 0) / 100 if info.get('debtToEquity') else 0,
+            'debt_to_equity': info.get('debtToEquity', 0) / 100 if info.get('debtToEquity') else 0,
+            'current_ratio': info.get('currentRatio', 0),
+            'revenue_growth': info.get('revenueGrowth', 0) * 100 if info.get('revenueGrowth') else 0,
+            'earnings_growth': info.get('earningsGrowth', 0) * 100 if info.get('earningsGrowth') else 0,
+            'free_cash_flow': info.get('freeCashflow', 0),
+            'operating_cash_flow': info.get('operatingCashflow', 0),
             'market_cap': info.get('marketCap', 0),
             'rsi': rsi,
             'dividend_yield': info.get('dividendYield', 0) * 100 if info.get('dividendYield') else 0,
@@ -224,7 +237,6 @@ def fetch_stock_metrics(symbol: str) -> Optional[Dict[str, Any]]:
             'upside': ((info.get('targetMeanPrice', current_price) - current_price) / current_price * 100),
             'recommendation': info.get('recommendationKey', 'N/A').upper(),
             'num_analysts': info.get('numberOfAnalystOpinions', 0),
-            # New enhancements
             'momentum_score': technical.get('momentum_score', 0),
             'piotroski_score': piotroski['score'],
             'piotroski_rating': piotroski['rating'],
@@ -233,6 +245,14 @@ def fetch_stock_metrics(symbol: str) -> Optional[Dict[str, Any]]:
             'macd_signal': technical['macd']['trend'],
             'bollinger_signal': technical['bollinger']['signal'],
         }
+
+        ml_result = ml_scorer.score_stock(stock_data)
+        stock_data['ml_score'] = ml_result.score
+        stock_data['ml_signal'] = ml_result.signal
+        stock_data['ml_confidence'] = ml_result.confidence
+        stock_data['model_agreement'] = ml_result.model_agreement
+
+        return stock_data
     except Exception as e:
         return None
 
@@ -480,19 +500,19 @@ def screen_stocks(universe: str = 'mega_cap', preset: str = 'value') -> None:
     criteria = SCREENING_PRESETS[preset]['criteria']
     filtered_stocks = apply_screening_criteria(stocks_data, criteria)
 
-    # Calculate scores for ALL stocks
+    # Calculate scores for ALL stocks (using ML scores)
     for stock in stocks_data:
-        stock['score'] = calculate_score(stock, preset)
+        stock['score'] = stock.get('ml_score', calculate_score(stock, preset))
 
-    # Sort all stocks by score
-    ranked_stocks = sorted(stocks_data, key=lambda x: x['score'], reverse=True)
+    # Sort all stocks by ML score
+    ranked_stocks = sorted(stocks_data, key=lambda x: x.get('ml_score', x.get('score', 0)), reverse=True)
 
     # Show results
     if filtered_stocks:
         console.print(f"[green]✓[/green] {len(filtered_stocks)} stocks passed strict criteria\n")
-        display_stocks = sorted(filtered_stocks, key=lambda x: x['score'], reverse=True)[:10]
+        display_stocks = sorted(filtered_stocks, key=lambda x: x.get('ml_score', x.get('score', 0)), reverse=True)[:10]
     else:
-        console.print(f"[yellow]⚠[/yellow] No stocks passed strict criteria. Showing top 10 by score:\n")
+        console.print(f"[yellow]Note:[/yellow] No stocks passed strict criteria. Showing top 10 by ML score:\n")
         display_stocks = ranked_stocks[:10]
 
     if not display_stocks:
@@ -565,36 +585,30 @@ def create_results_table(stocks: List[Dict[str, Any]], preset: str) -> Table:
     table.add_column("#", justify="right", style="bright_black", width=3)
     table.add_column("Symbol", style="bold cyan", width=7)
     table.add_column("Price", justify="right", width=8)
-    table.add_column("30-Day Trend", justify="center", width=20)
+    table.add_column("30-Day Trend", justify="center", width=18)
     table.add_column("Quality", justify="center", width=9)
-    table.add_column("Signal", justify="center", width=12)
-    table.add_column("Score", justify="center", width=14)
-    table.add_column("Rating", justify="center", width=12)
+    table.add_column("ML Score", justify="center", width=12)
+    table.add_column("ML Signal", justify="center", width=12)
+    table.add_column("Confidence", justify="center", width=10)
 
     for i, stock in enumerate(stocks[:10], 1):
-        # Enhanced 30-day sparkline
-        sparkline = create_enhanced_sparkline(stock.get('price_history_30d', []), width=15, show_trend=False)
+        sparkline = create_enhanced_sparkline(stock.get('price_history_30d', []), width=13, show_trend=False)
 
-        # Progress bar for score
-        score_bar = create_progress_bar(stock['score'], 100, width=8)
-
-        # Quality indicator (Piotroski)
         piotroski = stock.get('piotroski_score', 0)
         quality_color = "green" if piotroski >= 7 else "yellow" if piotroski >= 5 else "red"
         quality = f"[{quality_color}]{piotroski}/9[/{quality_color}]"
 
-        # Trading signal
-        signal = get_recommendation_indicator(stock['score'], "score")
+        ml_score = stock.get('ml_score', 0)
+        score_color = "bright_green" if ml_score >= 70 else "green" if ml_score >= 50 else "white"
+        ml_score_text = f"[{score_color}]{ml_score:.0f}/100[/{score_color}]"
 
-        # Overall rating (no emojis)
-        if stock['score'] >= 75:
-            rating = "[bright_green]STRONG[/bright_green]"
-        elif stock['score'] >= 60:
-            rating = "[green]GOOD[/green]"
-        elif stock['score'] >= 45:
-            rating = "[yellow]FAIR[/yellow]"
-        else:
-            rating = "[red]WEAK[/red]"
+        ml_signal = stock.get('ml_signal', 'HOLD')
+        signal_color = "bright_green" if 'BUY' in ml_signal else "green" if ml_signal == 'HOLD' else "red"
+        ml_signal_text = f"[{signal_color}]{ml_signal}[/{signal_color}]"
+
+        confidence = stock.get('ml_confidence', 0)
+        conf_color = "bright_green" if confidence >= 0.75 else "green" if confidence >= 0.60 else "white"
+        conf_text = f"[{conf_color}]{confidence:.0%}[/{conf_color}]"
 
         table.add_row(
             str(i),
@@ -602,33 +616,27 @@ def create_results_table(stocks: List[Dict[str, Any]], preset: str) -> Table:
             f"${stock['price']:.2f}",
             sparkline,
             quality,
-            signal,
-            score_bar,
-            rating
+            ml_score_text,
+            ml_signal_text,
+            conf_text
         )
 
     return table
 
 
 def create_top_picks_panel(stocks: List[Dict[str, Any]]) -> Panel:
-    """
-    Create panel displaying top 3 stock picks.
-
-    Args:
-        stocks: List of top-ranked stocks
-
-    Returns:
-        Rich Panel object with formatted top picks
-    """
-    text = "[bold yellow] TOP 3 PICKS[/bold yellow]\n\n"
+    """Create panel displaying top 3 ML-scored stock picks"""
+    text = "[bold yellow]TOP 3 ML PICKS[/bold yellow]\n\n"
 
     for i, stock in enumerate(stocks, 1):
         rank_color = "bright_green" if i == 1 else "green" if i == 2 else "yellow"
+        ml_score = stock.get('ml_score', stock.get('score', 0))
+        ml_signal = stock.get('ml_signal', 'HOLD')
         text += f"[{rank_color}]#{i}[/{rank_color}] [bold cyan]{stock['symbol']}[/bold cyan] - {stock['name'][:30]}\n"
-        text += f"   Score: [bold green]{stock['score']}/100[/bold green] │ "
+        text += f"   ML Score: [bold green]{ml_score:.0f}/100[/bold green] │ "
+        text += f"Signal: [bold white]{ml_signal}[/bold white] │ "
         text += f"Price: ${stock['price']:.2f} │ "
-        text += f"1Y: [{('green' if stock['returns_1y'] > 0 else 'red')}]{stock['returns_1y']:+.1f}%[/] │ "
-        text += f"P/E: {stock['pe']:.1f}\n\n"
+        text += f"1Y: [{('green' if stock['returns_1y'] > 0 else 'red')}]{stock['returns_1y']:+.1f}%[/]\n\n"
 
     return Panel(text, border_style=THEME['border'], box=box.SQUARE, style=THEME['panel_bg'])
 
@@ -646,7 +654,7 @@ if __name__ == "__main__":
     header.append("═" * 80, style="bright_blue")
     header.append("\n")
     header.append("                    ", style="bright_blue")
-    header.append(" 🔍 PROFESSIONAL STOCK SCREENER 🔍 ", style="bold white on blue")
+    header.append(" PROFESSIONAL STOCK SCREENER ", style="bold white on blue")
     header.append("\n", style="bright_blue")
     header.append("═" * 80, style="bright_blue")
     header.append("\n\n")

@@ -550,7 +550,7 @@ def create_bottom_line_panel(data: Dict) -> Panel:
 
     return Panel(
         text,
-        title="[bold white on blue] 💡 BOTTOM LINE [/bold white on blue]",
+        title="[bold white on blue] BOTTOM LINE [/bold white on blue]",
         border_style="bright_blue",
         box=box.DOUBLE,
         padding=(1, 2)

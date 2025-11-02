@@ -158,7 +158,7 @@ def create_scenarios_panel(investment: float, data: Dict, years: int) -> Panel:
     optimistic = calculate_projection(investment, optimistic_return, years)
 
     # Conservative
-    text.append("🔵 CONSERVATIVE SCENARIO\n", style="bold bright_blue")
+    text.append("CONSERVATIVE SCENARIO\n", style="bold bright_blue")
     text.append(f"  Annual Return: {conservative_return:+.1f}%\n", style="bright_blue")
     text.append(f"  Future Value:  ", style="white")
     text.append(f"${conservative['future_value']:,.0f}\n", style="bold bright_white")
@@ -243,7 +243,7 @@ def create_historical_context_panel(data: Dict) -> Panel:
 
 def create_year_by_year_table(investment: float, data: Dict, years: int) -> Table:
     table = Table(
-        title="[bold white on cyan] 📅 YEAR-BY-YEAR PROJECTION (AVERAGE SCENARIO) [/bold white on cyan]",
+        title="[bold white on cyan] YEAR-BY-YEAR PROJECTION (AVERAGE SCENARIO) [/bold white on cyan]",
         box=box.SIMPLE_HEAVY,
         show_header=True
     )

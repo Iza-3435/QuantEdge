@@ -429,7 +429,7 @@ def get_status_indicator(status_type):
         'closed': '[bright_black]○[/bright_black] Closed',
         'bullish': '[green]⬆[/green] Bullish',
         'bearish': '[red]⬇[/red] Bearish',
-        'warning': '[yellow]⚠[/yellow] Warning',
+        'warning': '[yellow]Warning:[/yellow] Warning',
         'confirmed': '[green]✓[/green] Confirmed',
         'neutral': '[white]●[/white] Neutral',
         'up': '[green]▲[/green]',

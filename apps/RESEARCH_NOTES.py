@@ -224,7 +224,7 @@ def export_notes_to_markdown(symbol: str) -> Optional[str]:
         # Bookmarked News
         news_bookmarks = [b for b in bookmarks if b[1] == 'NEWS']
         if news_bookmarks:
-            f.write("## 📰 Important News\n\n")
+            f.write("## Important News\n\n")
             for bm in news_bookmarks:
                 f.write(f"- {bm[2]}")
                 if bm[4]:
@@ -235,7 +235,7 @@ def export_notes_to_markdown(symbol: str) -> Optional[str]:
         # General Notes
         general_notes = [n for n in notes if n[1] == 'NOTE']
         if general_notes:
-            f.write("## 📝 Research Notes\n\n")
+            f.write("## Research Notes\n\n")
             for note in general_notes:
                 f.write(f"**{note[4][:10]}:** {note[2]}\n\n")
 
